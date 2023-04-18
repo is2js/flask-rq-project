@@ -1,0 +1,62 @@
+version: '3.8'
+
+# docker 및 redis 세팅 참고: https://github.com/geekceo/FastAPI-app-Redis-Docker
+
+services:
+  app-1:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - API_REDIS_HOST=redis
+    volumes:
+      - .:/app
+#      python app.py
+    command: bash -c "
+      gunicorn -w 1 -b 0.0.0.0:8000 app:app
+      "
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    networks:
+      - network1
+
+  app-worker:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - API_REDIS_HOST=redis
+    volumes:
+      - .:/app
+    command: bash -c "
+      rq worker -u redis://redis:6379
+      "
+    depends_on:
+      - redis
+    networks:
+      - network1
+
+  redis:
+    container_name: redis
+    build:
+      context: .
+      dockerfile: docker/redis/Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "6379:6379"
+    networks:
+      - network1
+
+networks:
+  network1:
+    name: rq_network
