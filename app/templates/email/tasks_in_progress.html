@@ -1,0 +1,14 @@
+<p><h2>현재 진행 중인 Task 입니다.</h2></p>
+{% if tasks %}
+{% for task in tasks %}
+    <p><h3>{{loop.index }} {{ task.name }} ({{task.updated_at}})</h3></p>
+    <p>
+        - <strong>task id:</strong> {{ task.id }}<br/>
+        - <strong>task description:</strong> {{ task.description }}
+    </p>
+{% endfor %}
+{% else %}
+<p>현재 진행중인 task가 없습니다.</p>
+{% endif %}
+
+<p><h3>Sincerely, Thanks. from The rq 프로젝트</h3></p>

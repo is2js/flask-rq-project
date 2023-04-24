@@ -1,0 +1,6 @@
+안녕하세요? rq 프로젝트입니다.
+특정 사이트의 단어 갯수 파악 서비스는 <bold>Word Counter
+사이즈별 이미지 생성 서비스는 <bold>Upload Image
+메일 보내기 서비스는 <bold>Send Mail을 이용해주세요.
+
+Sincerely, Thanks. from <bold>The rq 프로젝트
