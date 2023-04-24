@@ -3,9 +3,10 @@ from datetime import datetime
 
 import redis.exceptions
 import rq
-from sqlalchemy import types
+from sqlalchemy import types, ColumnElement
 from sqlalchemy.ext import mutable
-
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.sqltypes import Text
 from . import session, Base, r
 import sqlalchemy as db
 
@@ -73,13 +74,17 @@ class Task(BaseModel):
 
     statuses = ['queued', 'running', 'finished']
 
-    id = db.Column(db.String(36), primary_key=True)
+    # id = db.Column(db.String(36), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+
     name = db.Column(db.String(128), index=True)
     description = db.Column(db.String(128))
 
     # complete = db.Column(db.Boolean, default=False)
     failed = db.Column(db.Boolean, default=False)
     status = db.Column(db.Enum(*statuses, name='status'), default='queued')
+
+    log = db.Column(db.Text)
 
     result = db.Column(Json, nullable=True)
 

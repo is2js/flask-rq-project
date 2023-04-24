@@ -60,8 +60,9 @@ services:
     volumes:
       - .:/app
 #      rq worker test-queue -u redis://redis:6379
+#    rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT' => enqueue_call()에서 retry=Retry()사용후부터는 --with-scheduler 명령어를 사용해야됨.
     command: bash -c "
-      rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT'
+      rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT' --with-scheduler
       "
     depends_on:
       - redis

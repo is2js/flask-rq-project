@@ -2,42 +2,53 @@ from threading import Thread
 
 from flask import render_template
 from flask_mail import Message
+from rq import get_current_job
 
 from app import app, mail
-from .commons import set_task_progress
+from .commons import background_task, set_task_progress
+from rq import Retry
 
-
+@background_task
 def send_async_mail(email_data):
     """
     email_data는 dict로  attach_img_data와 sync=True만, 각 task마다 직접 지정해주기
     {
         'subject' : '', # 제목
         'recipients' : [], # 받을사람 list
-        'template_name' : 'static/template/xxxx', # 메일에 보낼 템플릿 지정
+        'template_name' : 'email/welcome' or 'email/tasks' , # 메일에 보낼 템플릿 지정( templates폴더까진 자동으로 진행됨)
         '템플릿에 쓸 변수' : 데이터, # 템플릿 {{ }} 필요한 변수 ex> 'task': Task(id='123', name='123', description='123'),
         'attachments' : [('posts.json', 'application/json',
                               json.dumps({'posts': data}, indent=4))], # 첨부파일 지정
     }
     """
     app.app_context().push()
-    try:
-        set_task_progress(0)
-        with app.open_resource(f'static/image/email/rq_project.png', 'rb') as f:
-            attach_img_data = f.read()
-        set_task_progress(50)
+    ## -> 데코레이터로 이동
+    # try:
+    with app.open_resource(f'static/image/email/rq_project.png', 'rb') as f:
+        attach_img_data = f.read()
 
-        send_mail(**email_data, attach_img_data=attach_img_data, sync=True)
-        set_task_progress(80)
-    except:
-        raise
-    finally:
-        set_task_progress(100)
+    set_task_progress(50)
 
-        return {'result': 'success'}
+    send_mail(**email_data, attach_img_data=attach_img_data, sync=True)
+
+    result = {'result': 'success'}
+    return result
+
+    # except Exception as e:
+    #     task = Task.query.get(get_current_job().get_id())
+    #     task.update(
+    #         failed=True,
+    #         status='finished',
+    #         log=f'Failed for: ' + str(e)
+    #     )
+    # finally:
+    #     set_task_progress(100)
+
 
 
 def send_mail(subject, recipients, template_name,
               sender='rq프로젝트', attach_img_data=None, attachments=None, sync=False, **kwargs):
+
     # 1) Message객체 생성
     msg = Message(subject=subject, sender=sender, recipients=recipients)
     # msg.body, msg.html = text_body, html_body
