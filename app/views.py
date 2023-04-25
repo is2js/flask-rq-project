@@ -1,5 +1,7 @@
 import os
 import secrets
+import string
+import random
 
 from flask import request, render_template, flash, session, redirect, url_for
 from sqlalchemy import desc
@@ -7,7 +9,7 @@ from sqlalchemy import desc
 from app import app
 from app import r
 from app import queue
-from app.tasks import count_words, create_image_set
+from app.tasks import count_words, create_image_set, enqueue_task, send_async_mail
 from app.models import Task
 
 
@@ -129,6 +131,7 @@ def send_new_task_mail():
     task.id = rq_job.get_id()
     task.save()
 
+
     return "success"
 
 
@@ -172,16 +175,42 @@ def send_mail():
                 Task.status.in_(['queued', 'running'])
             ).all()
 
-        #### enqueue + Task데이터 저장
+        #### enqueue + Task데이터 저장 -> wrapper로 한번에
         try:
-            rq_job = queue.enqueue('app.tasks.' + 'send_async_mail', email_data)
-            task = Task(id=rq_job.get_id(), name='send_mail', description=f'{template_name}으로 메일 전송')
-            task.save()
+            # rq_job = queue.enqueue('app.tasks.' + 'send_async_mail', email_data)
+            # task = Task(id=rq_job.get_id(), name='send_mail', description=f'{template_name}으로 메일 전송')
+            # task.save()
+            
+            enqueue_task(send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
 
-            flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송하였습니다.', 'succes')
+            flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송하였습니다.', 'success')
         except:
             flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송을 실패하였습니다', 'danger')
 
         return redirect(url_for('send_mail'))
 
     return render_template('send_mail.html', **cache)
+
+
+# 미들웨어 함수
+@app.before_request
+def before_request():
+    # 2. 쿼리스트링에 지정된 username이 있다면, 그녀석으로 username사용
+    if request.args.get('username'):
+        session['username'] = request.args.get('username')
+
+    # 1. session에 username이 없을 경우, 랜덤하게 만들어서 박아주기
+    # -> session에 넣으면 따로 객체를 안넘겨줘도 template에서 {{session.username}}을 사용할 수 있다.
+    if not session.get('username'):
+        username = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+        session['username'] = username
+
+@app.route('/change_username')
+def change_username():
+    # 세션에서 username 값을 삭제합니다.
+    session.pop('username', None)
+
+    # 로그아웃 후에는 홈페이지로 리디렉션합니다.
+    # -> 리다이렉션으로 before_request가 다시 호출 -> username 새로 생성된다.
+    return redirect(url_for('send_mail'))
+

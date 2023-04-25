@@ -423,4 +423,18 @@ def send_new_task_mail():
      ```
    
 
-#### (일시적 네트워크장애)최대 3번까지 5초간격으로 시도해보고 실패하면 예외발생하도록, enqueue_call()의 retry=Retry(retry_callback=)) 콜랙메서드 작성하기
+
+
+### views.py에서 변경된 기능으로 호출하기
+```python
+try:
+    # rq_job = queue.enqueue('app.tasks.' + 'send_async_mail', email_data)
+    # task = Task(id=rq_job.get_id(), name='send_mail', description=f'{template_name}으로 메일 전송')
+    # task.save()
+    
+    enqueue_task(send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
+
+    flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송하였습니다.', 'success')
+except:
+    flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송을 실패하였습니다', 'danger')
+```
