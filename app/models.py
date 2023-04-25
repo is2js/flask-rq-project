@@ -3,7 +3,7 @@ from datetime import datetime
 
 import redis.exceptions
 import rq
-from sqlalchemy import types, ColumnElement
+from sqlalchemy import types, ColumnElement, desc
 from sqlalchemy.ext import mutable
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.sqltypes import Text
@@ -100,3 +100,35 @@ class Task(BaseModel):
         job = self.get_rq_job()
         return job.meta.get('progress', 0) if job is not None \
             else 100
+
+
+class Message(BaseModel):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    # sender_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    recipient = db.Column(db.String(6), index=True)
+    body = db.Column(db.String(140))
+
+    # timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
+
+    def __repr__(self):
+        return '<Message {}>'.format(self.body)
+
+    @classmethod
+    def new_messages_of(cls, _session):
+        recipient = _session.get('username')
+        # datetime시 None이면 안되서 기본값도 준다.
+        last_message_read_time = _session.get('last_message_read_time') \
+                                 or datetime(1900, 1, 1)
+
+        return cls.query.filter_by(recipient=recipient)\
+            .filter(cls.created_at > last_message_read_time)\
+            .count()
+
+    @classmethod
+    def get_messages(cls, _session):
+        recipient = _session.get('username')
+
+        return cls.query.filter_by(recipient=recipient)\
+            .order_by(desc(cls.created_at)).all()
+

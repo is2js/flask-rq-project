@@ -39,4 +39,5 @@ def make_shell_context():
         queue=queue,
         Task=Task,
         session=session,
+        Message=Message,
     )

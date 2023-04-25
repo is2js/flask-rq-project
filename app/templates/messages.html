@@ -1,0 +1,42 @@
+<!-- https://github.com/yo-sarawut/e-Library/blob/dbdf686e741b19f49c8fc096ebc31f4318514938/tutorial/python/webapp/flask/series_learning_flask/ep-21.md -->
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+  <title>Job queue</title>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="row">
+      <div class="col">
+        <h5 class="mt-3 mb-3">Messages</h5>
+        {% if messages %}
+        {% for message in messages %}
+        <div class="card mb-3">
+          <div class="card-body">
+            <h6>{{ message.body }}</h6>
+            <p>받은시간: {{ message.created_at.strftime('%a, %d %b %Y %H:%M:%S') }}</p>
+            <small class="text-muted d-block">rq프로젝트에서 전송한 메세지입니다.</small>
+          </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p>No Messages</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
