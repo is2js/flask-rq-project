@@ -37,7 +37,8 @@ from app import tasks
 def make_shell_context():
     return dict(
         queue=queue,
-        Task=Task,
         session=session,
+        Task=Task,
         Message=Message,
+        Notification=Notification,
     )

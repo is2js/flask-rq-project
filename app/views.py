@@ -4,14 +4,14 @@ import string
 import random
 from datetime import datetime
 
-from flask import request, render_template, flash, session, redirect, url_for
-from sqlalchemy import desc
+from flask import request, render_template, flash, session, redirect, url_for, jsonify
+from sqlalchemy import desc, asc
 
 from app import app
 from app import r
 from app import queue
 from app.tasks import count_words, create_image_set, enqueue_task, send_async_mail
-from app.models import Task, Message
+from app.models import Task, Message, Notification
 
 
 # route 작성
@@ -212,8 +212,8 @@ def before_request():
 @app.route('/change_username')
 def change_username():
     # 해당username의 저장된 데이터 Message를 삭제한다.
-    for message in Message.query.filter_by(recipient=session.get('username')).all():
-        message.delete()
+    Message.query.filter_by(recipient=session.get('username')).delete()
+    Notification.query.filter_by(username=session.get('username')).delete()
 
     # 처리할 거 다하고 session.clear()를 써도 된다.
     session.clear()
@@ -227,6 +227,20 @@ def messages():
     session['last_message_read_time'] = datetime.now()
 
     # 2. 현재 session username으로 메세지 검색
-    messages = Message.get_messages(session)
+    messages = Message.get_messages_of(session)
 
     return render_template('messages.html', messages=messages)
+
+
+@app.route('/notifications')
+def notifications():
+    since = request.args.get('since', 0.0, type=float)
+    notifications = Notification.query.filter(
+        Notification.username == session['username'],
+        Notification.created_at > since
+    ).order_by(asc(Notification.created_at)).all()
+    return jsonify([{
+        'name': n.name,
+        'data': n.data(),
+        'timestamp': n.timestamp
+    } for n in notifications])

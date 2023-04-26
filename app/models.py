@@ -1,5 +1,7 @@
 import json
 from datetime import datetime
+from functools import wraps
+from time import time
 
 import redis.exceptions
 import rq
@@ -9,6 +11,7 @@ from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.sqltypes import Text
 from . import session, Base, r
 import sqlalchemy as db
+from flask import session as f_session
 
 
 class BaseModel(Base):
@@ -31,6 +34,7 @@ class BaseModel(Base):
         try:
             session.add(self)
             session.commit()
+            return self
         except Exception:
             session.rollback()
             raise
@@ -104,6 +108,7 @@ class Task(BaseModel):
 
 class Message(BaseModel):
     __tablename__ = 'messages'
+
     id = db.Column(db.Integer, primary_key=True)
     # sender_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     recipient = db.Column(db.String(6), index=True)
@@ -121,14 +126,45 @@ class Message(BaseModel):
         last_message_read_time = _session.get('last_message_read_time') \
                                  or datetime(1900, 1, 1)
 
-        return cls.query.filter_by(recipient=recipient)\
-            .filter(cls.created_at > last_message_read_time)\
+        return cls.query.filter_by(recipient=recipient) \
+            .filter(cls.created_at > last_message_read_time) \
             .count()
 
     @classmethod
-    def get_messages(cls, _session):
+    def get_messages_of(cls, _session):
         recipient = _session.get('username')
 
-        return cls.query.filter_by(recipient=recipient)\
+        return cls.query.filter_by(recipient=recipient) \
             .order_by(desc(cls.created_at)).all()
 
+    @classmethod
+    def create(cls, _session, body):
+        # 1. 알림 처리(삭제 후 생성)
+        Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
+        # 2. 알림처리가 끝나고, Message를 생성한다
+        message = cls(recipient=_session.get('username'), body=body)
+
+        return message.save()
+
+
+class Notification(BaseModel):
+    __tablename__ = 'notifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    username = db.Column(db.String(6), index=True)
+    timestamp = db.Column(db.Float, index=True, default=time)
+    payload = db.Column(Json)
+
+    @classmethod
+    def create(cls, _session, name, payload):
+        # 1. 현재사용자(in_session-username)의 알림 중
+        #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
+        Notification.query.filter_by(name=name, username=_session.get('username')).delete()
+        # 2. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
+        notification = Notification(
+            name=name,
+            username=_session.get('username'),
+            payload=payload
+        )
+        return notification.save()

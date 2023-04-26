@@ -92,7 +92,7 @@
            session['username'] = username
        
        # 3. 해당 username의 새 메세지의 갯수
-       session['new_messages'] = Message.new_messages_of(session)
+       session['new_messages'] = Message.new_messages(session)
    ```
    
 
@@ -117,7 +117,7 @@
    from datetime import datetime
    Message.query.filter_by(recipient='abcedf').filter(Message.create_at > datetime(1990,1,1).count()
    # 1
-   Message.new_messages_of({'username':'abcedf'})
+   Message.new_messages({'username':'abcedf'})
    # 1
    ```
    ![img.png](images/new_messages.png)
@@ -141,7 +141,7 @@
    - 생성 역순으로 messages들을 조회하는 cls메서드를 만들어 조회한다
    ```python
     @classmethod
-    def get_messages(cls, _session):
+    def get_messages_of(cls, _session):
         recipient = _session.get('username')
 
         return cls.query.filter_by(recipient=recipient)\
@@ -154,7 +154,7 @@
        session['last_message_read_time'] = datetime.now()
    
        # 2. 현재 session username으로 메세지 검색
-       messages = Message.get_messages(session)
+       messages = Message.get_messages_of(session)
    
        return render_template('messages.html', messages=messages)
    ```
@@ -209,10 +209,10 @@
 3. 조회하고 오면, **new_messages가 0으로 표기되는지 확인한다.**
    - 다시 여러 message들을 만들어서 여러개가 표시되는지 확인한다.
    ```python
-   Message(recipient='abcedf', body='abc').save()
-   Message(recipient='abcedf', body='abc').save()
-   Message(recipient='abcedf', body='abc').save()
-   Message(recipient='abcedf', body='abc').save()
+   Message(recipient='abcdef', body='abc').save()
+   Message(recipient='abcdef', body='abc').save()
+   Message(recipient='abcdef', body='abc').save()
+   Message(recipient='abcdef', body='abc').save()
    ```
    - 사용자를 변경하면 0이 되는지 확인한다.
    - **쿼리스트링으로 사용자를 지정해도, last_message_read_time초기화로 인해 0이 된다.**
@@ -247,4 +247,125 @@
    ```
    
 
-### 실시간 변화를 json필드로 제공해줄 Notification 모델
+### 실시간 변화를 payload(json필드)로 제공해줄 post전용 모델 Notification 구현
+1. 모델 정의
+   - **timestamp는 `time.time()`으로 나올 float값이며, `view에서 querystring으로 0.0부터 던지면서 현재 알람 순서`를 위한 칼럼이다.**
+      - `db.Datetime`이 아니라 **`db.Float로 정의`하며 index=True를 줘서 검색에도 활용된다.**
+      - 그러니 db.Float <-> default `time()`으로 default값을 가진다.
+   ```python
+   from time import time
+   #...
+   class Notification(BaseModel):
+       __tablename__ = 'notifications'
+   
+       id = db.Column(db.Integer, primary_key=True)
+       name = db.Column(db.String(128), index=True)
+       username = db.Column(db.String(6), index=True)
+       timestamp = db.Column(db.Float, index=True, default=time)
+       payload = db.Column(Json)
+   ```
+
+2. shell_context_processor에 추가
+   ```python
+   @app.shell_context_processor
+   def make_shell_context():
+       return dict(
+           queue=queue,
+           session=session,
+           Task=Task,
+           Message=Message,
+           Notification=Notification,
+       )
+   ```
+3. sqlite삭제 후 재실행
+
+4. **notification은 view에서 주기적으로 요청될 것이다.**
+   - **`특정모델(메세지)의 생성event`시 해당username의 notification도 같이 생성**
+      - **추가로, 기존 username의 notification은 삭제를 먼저해서 `이전 알림은 `**
+   - **`특정모델(메세지)의 조회event`시 notification도 default 값 처리**
+      - 알림의 payload가 count n개라면 -> payload count 0개로 초기화
+         - 새 알림이 발생되면 count 0(default)가 삭제되고 n개로 다시 나타날 것이다.
+
+### 알림이 들어가야하는 Message모델의 생성 method를 재정의하기 -> Notificatin의 삭제후생성도 묶어주기
+1. save는 그대로Message객체를 만들어서 사용할 것이나 **현재 사용자 정보인 `session`을 인자로 받을 것이며, `cls.new_messages_of()`도 사용해야하므로 cls메서드로 정의한다**
+   ```python
+   class Message(BaseModel):
+   #...
+    @classmethod
+    def create(cls, _session, body):
+        # 1. 현재사용자(in_session-username)의 알림 중
+        #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
+        Notification.query.filter_by(name='unread_message_count', username=_session.get('username')).delete()
+        # 2. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
+        # - data에는 현재사용자의 새로운 메세지 갯수를 넣어준다.
+        Notification(
+            name='unread_message_count',
+            username=_session.get('username'),
+            payload=dict(data=cls.new_messages_of(_session))
+        ).save()
+   
+        # 3. 알림처리가 끝나고, Message를 생성한다
+        message = cls(recipient=_session.get('username'), body=body)
+        message.save()
+        return message
+   ```
+2. test
+   - session대신 username이 들어간 dict를 넣어준다.
+   - **만일 메서드인자에서 session을 받지 않고 flask session을 메서드 내부에서 사용했다면, test시 HTTP관련 에러가 난다.**
+   ```python
+   Message.create({'username':'abcdef'},'123')
+   ```
+   
+3. **Notification의 삭제 후 생성 로직도 1개의 create메서드로 묶어주자.**
+   - 이 때, 현재사용자 정보인 `_session`을 받고, 달라지는 것은 `name=`과 `data=`부분이다.
+   ```python
+   class Notification(BaseModel):
+       @classmethod
+       def create(cls, _session, name, payload):
+           # 1. 현재사용자(in_session-username)의 알림 중
+           #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
+           Notification.query.filter_by(name=name, username=_session.get('username')).delete()
+           # 2. 알림의 내용인 payload에 현재 새정보를 dict()형으로 payload에 담아 저장하여 새 알림으로 대체한다
+           notification = Notification(
+               name=name,
+               username=_session.get('username'),
+               payload=payload
+           )
+           return notification.save()
+   ```
+   ```python
+   class Message(BaseModel):
+    __tablename__ = 'messages'
+   
+    @classmethod
+    def create(cls, _session, body):
+        # 1. 알림 처리(삭제 후 생성)
+        Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
+        # 2. 알림처리가 끝나고, Message를 생성한다
+        message = cls(recipient=_session.get('username'), body=body)
+
+        return message.save()
+   ```
+      
+4. shell 테스트
+   ```python
+   Message.create({'username':'abcdef'}, 'body')
+   ```
+   - Message가 생성되면서 , Notification도 자동 생성된다.
+      - payload에는 {'data':0}이 저장되어있다.
+      ![img.png](images/create_Test.png)
+
+5. 사용자변경시 데이터를 삭제해준다.
+   ```python
+   @app.route('/change_username')
+   def change_username():
+       # 해당username의 저장된 데이터 Message를 삭제한다.
+       Message.query.filter_by(recipient=session.get('username')).delete()
+       Notification.query.filter_by(username=session.get('username')).delete()
+   
+       # 처리할 거 다하고 session.clear()를 써도 된다.
+       session.clear()
+   
+       return redirect(url_for('send_mail'))
+   
+   ```
