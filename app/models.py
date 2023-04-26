@@ -1,17 +1,13 @@
 import json
 from datetime import datetime
-from functools import wraps
 from time import time
 
 import redis.exceptions
 import rq
-from sqlalchemy import types, ColumnElement, desc
+from sqlalchemy import types, desc, asc
 from sqlalchemy.ext import mutable
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.sqltypes import Text
 from . import session, Base, r
 import sqlalchemy as db
-from flask import session as f_session
 
 
 class BaseModel(Base):
@@ -86,11 +82,51 @@ class Task(BaseModel):
 
     # complete = db.Column(db.Boolean, default=False)
     failed = db.Column(db.Boolean, default=False)
-    status = db.Column(db.Enum(*statuses, name='status'), default='queued')
+    status = db.Column(db.Enum(*statuses, name='status'), default='queued', index=True)
 
     log = db.Column(db.Text)
 
     result = db.Column(Json, nullable=True)
+    # Notification을 위한 추가
+    username = db.Column(db.String(6), index=True)
+
+    def __repr__(self):
+        return f'<Task {self.id} {self.name}>'
+    @classmethod
+    def create(cls, _session, name, description):
+
+        task = cls(name=name, description=description, username=_session.get('username'))
+        return task.save()
+
+    @classmethod
+    def get_list_of(cls, _session):
+        return cls.query.filter(
+            cls.username == _session.get('username'),
+        ).all()
+
+    @classmethod
+    def get_finished_list_of(cls, _session, limit=None):
+        query = cls.query.filter(
+            cls.username == _session.get('username'),
+            cls.status == 'finished'
+        ).order_by(desc(cls.updated_at))
+
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
+
+    @classmethod
+    def get_unfinished_list_of(cls, _session, limit=None):
+        query = cls.query.filter(
+            cls.username == _session.get('username'),
+            cls.status != 'finished'
+        ).order_by(asc(cls.created_at))
+
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
 
     def get_rq_job(self):
         try:
@@ -114,8 +150,6 @@ class Message(BaseModel):
     recipient = db.Column(db.String(6), index=True)
     body = db.Column(db.String(140))
 
-    # timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
-
     def __repr__(self):
         return '<Message {}>'.format(self.body)
 
@@ -123,8 +157,7 @@ class Message(BaseModel):
     def new_messages_of(cls, _session):
         recipient = _session.get('username')
         # datetime시 None이면 안되서 기본값도 준다.
-        last_message_read_time = _session.get('last_message_read_time') \
-                                 or datetime(1900, 1, 1)
+        last_message_read_time = _session.get('last_message_read_time') or datetime(1900, 1, 1)
 
         return cls.query.filter_by(recipient=recipient) \
             .filter(cls.created_at > last_message_read_time) \
@@ -139,12 +172,14 @@ class Message(BaseModel):
 
     @classmethod
     def create(cls, _session, body):
-        # 1. 알림 처리(삭제 후 생성)
-        Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
-        # 2. 알림처리가 끝나고, Message를 생성한다
+        # 1. 알림처리보다 먼저, 현재 Message를 생성하여, -> 알림의 payload에 반영되게 한다.
         message = cls(recipient=_session.get('username'), body=body)
+        message.save()
 
-        return message.save()
+        # 2. 알림을 현재model에 맞는 name + 맞는 payload로 생성한다.
+        n = Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
+
+        return message
 
 
 class Notification(BaseModel):
@@ -168,3 +203,10 @@ class Notification(BaseModel):
             payload=payload
         )
         return notification.save()
+
+    @classmethod
+    def get_list_of(cls, _session, since=0.0):
+        return Notification.query.filter(
+            Notification.username == _session.get('username'),
+            Notification.timestamp > since
+        ).order_by(asc(Notification.timestamp)).all()

@@ -1,9 +1,8 @@
-<p><h2>최근 완료된 5개의 Task 입니다.</h2></p>
+<p><h2>전체 Task 입니다.</h2></p>
 
 {% for task in tasks %}
-    <p><h3>{{loop.index }} {{ task.name }} ({{task.updated_at}})</h3></p>
+    <p><h3>종류:{{ task.name }} ({{task.updated_at.strftime('%Y년 %m월 %d일 %H:%M:%S')}})</h3></p>
     <p>
-        - <strong>task id:</strong> {{ task.id }}<br/>
         - <strong>task description:</strong> {{ task.description }}
     </p>
 {% endfor %}

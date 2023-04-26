@@ -23,8 +23,10 @@
               class="badge"
               style="visibility: {% if session.new_messages %}visible{% else %}hidden {% endif %};"
         >{{ session.new_messages }}</span>
-
     </a>
+        {% if session.last_message_read_time %}
+        <small class="text-muted">마지막 메세지 확인시간: {{session.last_message_read_time.strftime('%Y %m %d %H:%M:%S')}}</small>
+        {% endif %}
 
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -54,12 +56,14 @@
                             <label for="template_name">템플릿:</label>
                             <select name="template_name" class="custom-select" id="template_name">
                                 <option {% if template_name==
-                                "email/tasks" %}selected{% endif %} value="email/tasks">최근 완료 5개 Tasks</option>
+                                "email/welcome" %}selected{% endif %} value="email/welcome">환영인사</option>
+                                <option {% if template_name==
+                                "email/tasks" %}selected{% endif %} value="email/tasks">전체 Tasks 내역</option>
+                                <option {% if template_name==
+                                "email/tasks_finished" %}selected{% endif %} value="email/tasks_finished">최근 완료 5개 Tasks</option>
                                 <option {% if template_name==
                                 "email/tasks_in_progress" %}selected{% endif %} value="email/tasks_in_progress">진행 중인
                                 Tasks</option>
-                                <option {% if template_name==
-                                "email/welcome" %}selected{% endif %} value="email/welcome">환영인사</option>
                             </select>
                         </div>
                         <div class="form-group mb-3">
@@ -79,8 +83,11 @@
 
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct" crossorigin="anonymous"></script>
+    <!-- jquery는 $.ajax호출을 위해 slim제거 + integrity부분 제거 -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" ></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+            crossorigin="anonymous"></script>
     <!-- 추가 스크립트   -->
     <script type="text/javascript" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 </body>

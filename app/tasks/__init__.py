@@ -1,3 +1,4 @@
+from flask import session
 from rq import Retry
 
 from .word_counter import count_words
@@ -15,15 +16,15 @@ def enqueue_task(
         description=None,  # DB + task용
         timeout=300,  # enqueue용 (수행기다려주는 최대 시간(초))-> 5분지나면, TimeoutException  예외발생 후, 다른 task하러 간다
         **kwargs,  # Task메서드용 3
-
     ):
     if not description:
         raise ValueError('Description required to start background job')
 
     # 1) Task부터 생성하고, queue의 job_id를 Task.id로 배정하여, enqueue실패시도 반영되게 한다
     # -> 들어온 task_func의 .__name__을 name으로 저장한다
-    task = Task(name=task_func.__name__, description=description)
-    task.save()  # save후에는 자동으로  id가 배정되어있다.
+    # task = Task(name=task_func.__name__, description=description)
+    # task.save()  # save후에는 자동으로  id가 배정되어있다.
+    task = Task.create(session, name=task_func.__name__, description=description)
 
     # 2) enqueue대신 enqueue_call()을 사용하여 예약을 더 부드럽게 한다.
     # -> time_out 도 제공함

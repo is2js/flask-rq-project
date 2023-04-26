@@ -87,8 +87,9 @@ def launch_task(name, args, description):
     rq_job = queue.enqueue('app.tasks.' + name, args)
     # 2) 해당 task를 설명을 넣어 db데이터를 생성한다
     #
-    task = Task(id=rq_job.get_id(), name=name, description=description)
-    task.save()
+    # task = Task(id=rq_job.get_id(), name=name, description=description)
+    # task.save()
+    task = Task.create(session, name, description)
     return 'launch_task'
 
 
@@ -157,23 +158,30 @@ def send_mail():
             email_data['attachments'] = [(file.filename, file.mimetype, file.read())]
 
         ### TEMPLATE 종류에 따라 다르게 호출
-        if template_name == 'email/tasks':
+        if template_name == 'email/welcome':
+            email_data['subject'] = '안녕하세요 rq프로젝트 서비스 소개입니다.'
+            # 템플릿별 필요변수 -> X
+        elif template_name == 'email/tasks_finished':
             email_data['subject'] = 'rq프로젝트 완료된 최근 5개 Tasks 정보입니다.'
             # 템플릿별 필요변수
             # email_data['tasks'] = Task.query.order_by(desc(Task.updated_at)).limit(5).all()
-            email_data['tasks'] = Task.query.filter(
-                Task.status == 'finished'
-            ).order_by(desc(Task.updated_at)).limit(5).all()
-        elif template_name == 'email/welcome':
-            email_data['subject'] = '안녕하세요 rq프로젝트 서비스 소개입니다.'
-            # 템플릿별 필요변수
+            # email_data['tasks'] = Task.query.filter(
+            #     Task.status == 'finished'
+            # ).order_by(desc(Task.updated_at)).limit(5).all()
+            email_data['tasks'] = Task.get_finished_list_of(session, limit=5)
         elif template_name == 'email/tasks_in_progress':
             email_data['subject'] = 'rq프로젝트 진행 중인 Tasks 정보입니다.'
             # 템플릿별 필요변수
             # email_data['tasks'] = Task.query.filter_by(complete=False).all()
-            email_data['tasks'] = Task.query.filter(
-                Task.status.in_(['queued', 'running'])
-            ).all()
+            # email_data['tasks'] = Task.query.filter(
+            #     Task.status.in_(['queued', 'running'])
+            # ).all()
+            email_data['tasks'] = Task.get_unfinished_list_of(session, limit=None)
+
+        elif template_name == 'email/tasks':
+            email_data['subject'] = 'rq프로젝트 전체 Tasks 정보입니다.'
+            # 템플릿별 필요변수
+            email_data['tasks'] = Task.get_list_of(session)
 
         #### enqueue + Task데이터 저장 -> wrapper로 한번에
         try:
@@ -223,8 +231,14 @@ def change_username():
 
 @app.route('/messages')
 def messages():
-    # 1. 마지막 읽은 시간 update
+    # 1. 마지막 읽은 시간 update -> new_message가 0으로 뽑힐 것이다.
     session['last_message_read_time'] = datetime.now()
+
+    # 1-2.  noticiation초기화 추가 -> notification의 'unread_message_count'의 payload {'data': n ===> 0 }으로 업뎃시켜줘야한다.
+    # => Notification create() 내부에선 기존 데이터를 삭제하고, 생성하게 된다.
+    Notification.create(session, name='unread_message_count', payload=dict(data=0))
+
+
 
     # 2. 현재 session username으로 메세지 검색
     messages = Message.get_messages_of(session)
@@ -241,6 +255,6 @@ def notifications():
     ).order_by(asc(Notification.created_at)).all()
     return jsonify([{
         'name': n.name,
-        'data': n.data(),
+        'data': n.payload['data'],
         'timestamp': n.timestamp
     } for n in notifications])

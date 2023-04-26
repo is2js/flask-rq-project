@@ -19,7 +19,7 @@ app.config.from_object(Config)
 
 mail = Mail(app)
 
-engine = create_engine("sqlite:///db.sqlite")
+engine = create_engine("sqlite:///db.sqlite", pool_size=1, max_overflow=0) # default 5, 10
 session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 Base = declarative_base()
 Base.query = session.query_property()
@@ -42,3 +42,8 @@ def make_shell_context():
         Message=Message,
         Notification=Notification,
     )
+
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    session.remove()

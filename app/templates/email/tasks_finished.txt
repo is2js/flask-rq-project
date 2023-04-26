@@ -1,4 +1,4 @@
-전체 Task들입니다.
+진행 중인 Task들입니다.
 
 {% for task in tasks %}
     {{ task.name }}

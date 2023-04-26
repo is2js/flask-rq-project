@@ -293,10 +293,14 @@
    #...
     @classmethod
     def create(cls, _session, body):
-        # 1. 현재사용자(in_session-username)의 알림 중
+        # 1. 알림처리가 끝나고, Message를 생성한다
+        message = cls(recipient=_session.get('username'), body=body)
+        message.save()
+        
+        # 2. 현재사용자(in_session-username)의 알림 중
         #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
         Notification.query.filter_by(name='unread_message_count', username=_session.get('username')).delete()
-        # 2. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
+        # 3. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
         # - data에는 현재사용자의 새로운 메세지 갯수를 넣어준다.
         Notification(
             name='unread_message_count',
@@ -304,9 +308,6 @@
             payload=dict(data=cls.new_messages_of(_session))
         ).save()
    
-        # 3. 알림처리가 끝나고, Message를 생성한다
-        message = cls(recipient=_session.get('username'), body=body)
-        message.save()
         return message
    ```
 2. test
@@ -339,12 +340,14 @@
    
     @classmethod
     def create(cls, _session, body):
-        # 1. 알림 처리(삭제 후 생성)
-        Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
-        # 2. 알림처리가 끝나고, Message를 생성한다
+        # 1. 알림처리보다 먼저, 현재 Message를 생성하여, -> 알림의 payload에 반영되게 한다.
         message = cls(recipient=_session.get('username'), body=body)
+        message.save()
 
-        return message.save()
+        # 2. 알림을 현재model에 맞는 name + 맞는 payload로 생성한다.
+        Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
+
+        return message
    ```
       
 4. shell 테스트
@@ -355,7 +358,27 @@
       - payload에는 {'data':0}이 저장되어있다.
       ![img.png](images/create_Test.png)
 
-5. 사용자변경시 데이터를 삭제해준다.
+5. **메세지 확인시 session['last_message_read_time'] 업뎃으로 new_messaages 조회시 0을 만들 뿐 아니라**
+   - **`메세지관련 Notification의 payload data또한 0으로 업뎃`해줘야한다**
+      ```python
+      @app.route('/messages')
+      def messages():
+          # 1. 마지막 읽은 시간 update -> new_message가 0으로 뽑힐 것이다.
+          session['last_message_read_time'] = datetime.now()
+       
+          # 1-2.  noticiation초기화 추가 -> notification의 'unread_message_count'의 payload {'data': n ===> 0 }으로 업뎃시켜줘야한다.
+          # => Notification create() 내부에선 기존 데이터를 삭제하고, 생성하게 된다.
+          Notification.create(name='unread_message_count', payload=dict(data=0))
+   
+   
+   
+          # 2. 현재 session username으로 메세지 검색
+          messages = Message.get_messages_of(session)
+   
+          return render_template('messages.html', messages=messages)
+      ```
+   
+6. 사용자변경시 데이터를 삭제해준다.
    ```python
    @app.route('/change_username')
    def change_username():
