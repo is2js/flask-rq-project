@@ -1,3 +1,4 @@
+import copy
 import json
 from datetime import datetime
 from time import time
@@ -40,6 +41,7 @@ class BaseModel(Base):
             for key, value in kwargs.items():
                 setattr(self, key, value)
             session.commit()
+            return self
         except Exception:
             session.rollback()
             raise
@@ -72,7 +74,7 @@ mutable.MutableDict.associate_with(Json)
 class Task(BaseModel):
     __tablename__ = 'tasks'
 
-    statuses = ['queued', 'running', 'finished']
+    statuses = ['queued', 'running', 'canceled', 'finished']
 
     # id = db.Column(db.String(36), primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
@@ -92,6 +94,7 @@ class Task(BaseModel):
 
     def __repr__(self):
         return f'<Task {self.id} {self.name}>'
+
     @classmethod
     def create(cls, _session, name, description):
 
@@ -120,7 +123,8 @@ class Task(BaseModel):
     def get_unfinished_list_of(cls, _session, limit=None):
         query = cls.query.filter(
             cls.username == _session.get('username'),
-            cls.status != 'finished'
+            # cls.status != 'finished'
+            cls.status.in_(['queued', 'running'])
         ).order_by(asc(cls.created_at))
 
         if limit:
@@ -132,7 +136,7 @@ class Task(BaseModel):
         try:
             rq_job = rq.job.Job.fetch(str(self.id), connection=r)
         except (redis.exceptions.RedisError, rq.exceptions.NoSuchJobError):
-        # except redis.exceptions.RedisError:
+            # except redis.exceptions.RedisError:
             return None
         return rq_job
 
@@ -154,6 +158,29 @@ class Task(BaseModel):
             'username': self.username,
             'progress': self.get_progress(),
         }
+
+    def cancel_rq_job(self):
+        try:
+            rq_job = rq.job.Job.fetch(str(self.id), connection=r)
+            # 1) 완료되거나 실패한 job인 경우는 취소 False -> 외부에서 취소할 수 없다고 알려준다. by flash
+            if rq_job.is_finished or rq_job.is_failed:
+                return False
+            # 2) 대기 or 진행중인 task
+            rq_job.cancel()
+            rq_job.delete()
+
+            # Task데이터를 완료되신 canceled로 업뎃하기
+            # - @background_task의 try코드에서 수행후 result로 Task 'finished'업뎃하는 코드는 실행 안되고 중단 되고
+            # - 바로 finally로 가서 set_task_progress(100)으로 Notification을 완료상태로 만든다.
+            # -> 그래서 'finished'처리가 실행안되고, 중단된 대신 'canceled' 처리를 직접해줘야한다
+            self.update(
+                failed=True,
+                status='canceled',  # finished가 아닌 canceled로 저장
+            )
+            return True
+        except (redis.exceptions.RedisError, rq.exceptions.NoSuchJobError):
+            return False
+
 
 class Message(BaseModel):
     __tablename__ = 'messages'
@@ -190,7 +217,12 @@ class Message(BaseModel):
         message.save()
 
         # 2. 알림을 현재model에 맞는 name + 맞는 payload로 생성한다.
-        n = Notification.create(username=_session.get('username'), name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
+        n = Notification.create(
+            username=_session.get('username'),
+            name='unread_message_count',
+            # payload=dict(data=cls.new_messages_of(_session)),
+            data=cls.new_messages_of(_session)
+        )
 
         return message
 
@@ -205,17 +237,67 @@ class Notification(BaseModel):
     payload = db.Column(Json)
 
     @classmethod
-    def create(cls, username, name, payload):
-        # 1. 현재사용자(in_session-username)의 알림 중
-        #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
-        Notification.query.filter_by(name=name, username=username).delete()
-        # 2. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
-        notification = Notification(
-            name=name,
-            username=username,
-            payload=payload
-        )
-        return notification.save()
+    def create(cls, username, name, data):
+        # 1. name별 username별 이미 Notification이 있으면 payload를 수정, 없으면 새로 생성한다.
+        notification = Notification.query.filter_by(name=name, username=username).first()
+        if notification:
+            ## 수정
+            # - message는 payload['data']를 덮어쓰기만 하면 되지만
+            # - task는  payload['data']는 list이며, list 내부 task_dict들을 순회하면서
+            #   1) data={'task_id'}와 같은 task_id를 가진 dict가 있으면 => 해당 dict를 덮어쓴다
+            #   2) 같은 task_id를 가진 dict가 없다면 => payload['data']라는 list에 append해서 update한다
+            ## 수정시 Json필드의 주의사항
+            # - 덮어쓸 index를 찾아서, payload['data'][idx] = data 로 집어넣으면  update or commit()시 반영이 안된다 -> 무슨 수를 써도 안됨.
+            # => payload라는 dict(json)전체 업뎃이 아닌  payload['data']의 list르 업뎃하는 상황이라면,
+            # => 기존의 dict list인 payload['data']을 임시변수에 받아놓고 -> 업뎃한 뒤 -> payload['data]에 재할당 해주자.
+            #    notification.payload['data'].append( data )  OR  notification.payload['data'] [idx] = data 는 업뎃이 안된다.
+
+            if name == 'task_progress':
+                previous_list = notification.payload['data']
+                for idx, task_dict in enumerate(previous_list):
+                    if data['task_id'] == task_dict['task_id']:
+                        # 반영은 됌.
+                        # notification.update(payload=dict(data='new'))
+
+                        # 이것도 반영됌
+                        # notification.payload['data'] = 'new'
+                        # session.commit()
+
+                        # payload['data']는 달라졌으나, 반영은 안됌
+                        # notification.payload['data'][idx] = data
+                        # session.commit()
+                        previous_list[idx] = data
+                        notification.payload['data'] = previous_list
+                        break
+                else:
+                    previous_list.append(data)
+                    notification.payload['data'] = previous_list
+
+                session.commit()
+                return notification
+
+            # elif name == 'unread_message_count':
+            else:
+                payload = dict(data=data)
+                return notification.update(payload=payload)
+
+        else:
+            ## 생성
+            # 1) 외부에서 받은 data={}를 내부적으로 payload를 dict(data=)에 넣어서 생성
+            # - message -> int로 data가 들어어오면 -> dict(data= int ) 형식으로 집어넣기
+            # - task_progress -> dict로 data={'task_id':, 'progress':}가 들어오면 dict(data= [  ])로 list로 감싸서 집어넣기
+            if name == 'task_progress':
+                payload = dict(data=[data])
+            # elif name == 'unread_message_count':
+            else:
+                payload = dict(data=data)
+
+            notification = Notification(
+                name=name,
+                username=username,
+                payload=payload
+            )
+            return notification.save()
 
     @classmethod
     def get_list_of(cls, _session, since=0.0):

@@ -233,8 +233,24 @@
        } for n in notifications])
    ```
    
+   
 4. 테스트에서 여러개의 task를 queue에 넣고 progress를 잘 찾아오는지 확인한다.
    ![img.png](images/multiple_progress.png)
 
-5. polling 주기를 10초에서 -> 5초로 변경하자
-6. 
+5. **사용자 변경시 삭제하는 Notification도 like로 검색하게 한다**
+   ```python
+   @app.route('/change_username')
+   def change_username():
+       # 해당username의 저장된 데이터 Message를 삭제한다.
+       Message.query.filter_by(recipient=session.get('username')).delete()
+       Notification.query.filter_by(
+           # username=session.get('username')
+           Notification.username.like(f"{session['username']}%"),
+       ).delete()
+   
+       # 처리할 거 다하고 session.clear()를 써도 된다.
+       session.clear()
+   
+       return redirect(url_for('send_mail'))
+   ```
+6. polling 주기를 10초에서 -> 5초로 변경하자

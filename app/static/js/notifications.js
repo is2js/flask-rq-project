@@ -6,6 +6,7 @@ function set_message_count(n) {
 function set_task_progress(task_id, progress) {
     $('#' + task_id + '-progress').text(progress);
     $('#' + task_id + '-progress-close').css('visibility', progress === 100 ? 'visible' : 'hidden');
+    $('#' + task_id + '-progress-cancel').css('visibility', progress === 100 ? 'hidden' : 'visible');
 }
 
 /* Function updating unread messages count */
@@ -18,14 +19,19 @@ $(function () {
         $.ajax(url + "?since=" + since).done(
             function (notifications) {
                 for (var i = 0; i < notifications.length; i++) {
+                    // console.log(notifications[i].data)
                     // if (notifications[i].name == 'unread_message_count')
                     switch (notifications[i].name) {
                         case 'unread_message_count':
                             set_message_count(notifications[i].data);
                             break;
                         case 'task_progress':
-                            // set_task_progress(notifications[i].task_id, notifications[i].progress);
-                            set_task_progress(notifications[i].data.task_id, notifications[i].data.progress);
+                            // set_task_progress(notifications[i].data.task_id, notifications[i].data.progress);
+                            // task_progress인 경우, data에는 list(array)가 들어오므로 -> 순회하면서 처리한다
+                            notifications[i].data.forEach(function(task, index, array) {
+                              // console.log(task, index, array);
+                                set_task_progress(task.task_id, task.progress);
+                            });
                             break;
                     }
                     since = notifications[i].timestamp;

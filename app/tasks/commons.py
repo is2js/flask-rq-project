@@ -12,15 +12,25 @@ def set_task_progress(progress):
         job.meta['progress'] = progress
         job.save_meta()
 
-        task = Task.query.get(job.get_id())
+        task = Task.query.get(int(job.get_id()))
         Notification.create(
             name='task_progress',
-            # username=task.username,
-            username=f'{task.username}_{task.id}',  #taks별로 1개의 username이 아닌 username_task_id로 생성하자
-            payload=dict(data={
+            # username=f'{task.username}_{task.id}',  #taks별로 1개의 username이 아닌 username_task_id로 생성하자
+            # payload=dict(data={
+            #     'task_id': task.id,
+            #     'progress': progress,
+            # }),
+            username=task.username,
+            # payload=dict(data=[
+            #     {
+            #         'task_id': task.id,
+            #         'progress': progress,
+            #     }
+            # ])
+            data={
                 'task_id': task.id,
                 'progress': progress,
-            }),
+            }
         )
 
         # if progress >= 100:
@@ -29,6 +39,7 @@ def set_task_progress(progress):
         #         task.update(status='finished')
 
         ## DB처리 + 예외처리까지 하는 데코레이터
+
 
 def background_task(f):
     @wraps(f)

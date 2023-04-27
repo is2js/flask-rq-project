@@ -198,6 +198,25 @@ def send_mail():
 
     return render_template('send_mail.html', **cache)
 
+# task 취소
+@app.route('/task_cancel/<task_id>')
+def cancel_task(task_id):
+    # 어차피 db와 연계되어야하기 때문에, job만 불러와 취소가 아니라, Task를 불러와 메서드로 처리한다.
+
+    # job = rq.job.Job.fetch('my_job_id', connection=redis)
+    # job.cancel()
+    # job.get_status()  # Job status is CANCELED
+    task = Task.query.get(int(task_id))
+    result = task.cancel_rq_job()
+    if result:
+        flash(f'Task#{task.id} {task.name}가 취소되었습니다.', 'success')
+    else:
+        flash(f'Task#{task.id} {task.name}가 이미 완료된 상태라 취소에 실패했습니다.', 'danger')
+
+    # 나중에는 직접으로 돌아가도록 수정
+    return redirect(url_for('send_mail'))
+
+
 
 # 미들웨어 함수
 @app.before_request
@@ -224,7 +243,16 @@ def before_request():
 def change_username():
     # 해당username의 저장된 데이터 Message를 삭제한다.
     Message.query.filter_by(recipient=session.get('username')).delete()
-    Notification.query.filter_by(username=session.get('username')).delete()
+
+    #### 여러개를 조회할 경우 .delete()가 안먹히고, count만 반환된다.
+    # -> 순회하면서 삭제하도록 변경
+    targets = Notification.query.filter(
+        # Notification.query.filter_by(
+        # username=session.get('username')
+        Notification.username.like(f"{session['username']}%"),
+    ).all()
+    for t in targets:
+        t.delete()
 
     # 처리할 거 다하고 session.clear()를 써도 된다.
     session.clear()
@@ -239,7 +267,7 @@ def messages():
 
     # 1-2.  noticiation초기화 추가 -> notification의 'unread_message_count'의 payload {'data': n ===> 0 }으로 업뎃시켜줘야한다.
     # => Notification create() 내부에선 기존 데이터를 삭제하고, 생성하게 된다.
-    Notification.create(username=session.get('username'), name='unread_message_count', payload=dict(data=0))
+    Notification.create(username=session.get('username'), name='unread_message_count', data=0)
 
     # 2. 현재 session username으로 메세지 검색
     messages = Message.get_messages_of(session)
@@ -262,3 +290,5 @@ def notifications():
         'data': n.payload['data'],
         'timestamp': n.timestamp
     } for n in notifications])
+
+

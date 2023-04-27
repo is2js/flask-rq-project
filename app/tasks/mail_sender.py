@@ -56,15 +56,15 @@ def send_mail(subject, recipients, template_name,
     msg.html = render_template(template_name + '.html', **kwargs)
 
     # 2) [로고 이미지] inline 첨부 및 img태그로 변환
-    if attach_img_data:
-        msg.attach(
-            filename="image.png",
-            content_type="image/png",
-            data=attach_img_data,
-            disposition='inline',
-            headers=[['Content-ID', '<image>']]
-        )
-        msg.html += '<p><img src="cid:image" height="200"></p>'
+    # if attach_img_data:
+    #     msg.attach(
+    #         filename="image.png",
+    #         content_type="image/png",
+    #         data=attach_img_data,
+    #         disposition='inline',
+    #         headers=[['Content-ID', '<image>']]
+    #     )
+    #     msg.html += '<p><img src="cid:image" height="200"></p>'
 
     # 3) 첨부파일이 있으면, 순회하면서 msg.attach()에 넣어준다.
     if attachments:
