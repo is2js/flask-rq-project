@@ -13,18 +13,23 @@ def set_task_progress(progress):
         job.save_meta()
 
         task = Task.query.get(job.get_id())
-        Notification.create(name='task_progress', username=task.username, payload=dict(
-            task_id=task.id,
-            progress=progress,
-        ))
+        Notification.create(
+            name='task_progress',
+            # username=task.username,
+            username=f'{task.username}_{task.id}',  #taks별로 1개의 username이 아닌 username_task_id로 생성하자
+            payload=dict(data={
+                'task_id': task.id,
+                'progress': progress,
+            }),
+        )
 
         # if progress >= 100:
         #     task = Task.query.get(job.get_id())
         #     if task:
         #         task.update(status='finished')
 
+        ## DB처리 + 예외처리까지 하는 데코레이터
 
-## DB처리 + 예외처리까지 하는 데코레이터
 def background_task(f):
     @wraps(f)
     def task_handler(*args, **kwargs):
@@ -35,7 +40,7 @@ def background_task(f):
         task.update(status='running')
         # 1-3) 필요시 logger 생성
         # 1-4) job에 progress 정보 넣어주기
-        set_task_progress(0) # Notification도 같이 생성된다.
+        set_task_progress(0)  # Notification도 같이 생성된다.
 
         #### TASK메서드 수행 in try/except
         # 2-1) 실패시 TASK DB데이터에 exception기록

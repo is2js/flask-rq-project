@@ -100,7 +100,6 @@ def get_task(name):
         Task.name == name,
         Task.status.in_(['queued', 'running'])
     ).first()
-    print(task)
     return 'get_task'
 
 
@@ -216,6 +215,10 @@ def before_request():
     # 3. 해당 username의 새 메세지의 갯수
     session['new_messages'] = Message.new_messages_of(session)
 
+    # 4. 해당 username의 진행중인 task
+    # session['tasks_in_progress'] = [ task.to_dict() for task in Task.get_list_of(session)]
+    session['tasks_in_progress'] = [task.to_dict() for task in Task.get_unfinished_list_of(session)]
+
 
 @app.route('/change_username')
 def change_username():
@@ -247,10 +250,13 @@ def messages():
 @app.route('/notifications')
 def notifications():
     since = request.args.get('since', 0.0, type=float)
+
     notifications = Notification.query.filter(
-        Notification.username == session['username'],
+        # Notification.username == session['username'],
+        Notification.username.like(f"{session['username']}%"),
         Notification.created_at > since
     ).order_by(asc(Notification.created_at)).all()
+
     return jsonify([{
         'name': n.name,
         'data': n.payload['data'],

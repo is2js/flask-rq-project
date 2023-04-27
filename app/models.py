@@ -130,9 +130,9 @@ class Task(BaseModel):
 
     def get_rq_job(self):
         try:
-            rq_job = rq.job.Job.fetch(self.id, connection=r)
-        # except (redis.exceptions.RedisError, rq.exceptions.NoSuchJobError):
-        except redis.exceptions.RedisError:
+            rq_job = rq.job.Job.fetch(str(self.id), connection=r)
+        except (redis.exceptions.RedisError, rq.exceptions.NoSuchJobError):
+        # except redis.exceptions.RedisError:
             return None
         return rq_job
 
@@ -141,6 +141,19 @@ class Task(BaseModel):
         return job.meta.get('progress', 0) if job is not None \
             else 100
 
+    # session에 객체를 넣어주기 위한 직렬화
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'failed': self.failed,
+            'status': self.status,
+            'log': self.log,
+            'result': self.result,
+            'username': self.username,
+            'progress': self.get_progress(),
+        }
 
 class Message(BaseModel):
     __tablename__ = 'messages'
