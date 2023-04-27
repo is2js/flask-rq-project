@@ -1,8 +1,9 @@
 from functools import wraps
 
+from flask import session
 from rq import get_current_job
 
-from app.models import Task
+from app.models import Task, Notification
 
 
 def set_task_progress(progress):
@@ -10,6 +11,12 @@ def set_task_progress(progress):
     if job:
         job.meta['progress'] = progress
         job.save_meta()
+
+        task = Task.query.get(job.get_id())
+        Notification.create(name='task_progress', username=task.username, payload=dict(
+            task_id=task.id,
+            progress=progress,
+        ))
 
         # if progress >= 100:
         #     task = Task.query.get(job.get_id())
@@ -28,7 +35,7 @@ def background_task(f):
         task.update(status='running')
         # 1-3) 필요시 logger 생성
         # 1-4) job에 progress 정보 넣어주기
-        set_task_progress(0)
+        set_task_progress(0) # Notification도 같이 생성된다.
 
         #### TASK메서드 수행 in try/except
         # 2-1) 실패시 TASK DB데이터에 exception기록

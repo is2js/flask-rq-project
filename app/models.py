@@ -177,7 +177,7 @@ class Message(BaseModel):
         message.save()
 
         # 2. 알림을 현재model에 맞는 name + 맞는 payload로 생성한다.
-        n = Notification.create(_session, name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
+        n = Notification.create(username=_session.get('username'), name='unread_message_count', payload=dict(data=cls.new_messages_of(_session)))
 
         return message
 
@@ -192,14 +192,14 @@ class Notification(BaseModel):
     payload = db.Column(Json)
 
     @classmethod
-    def create(cls, _session, name, payload):
+    def create(cls, username, name, payload):
         # 1. 현재사용자(in_session-username)의 알림 중
         #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
-        Notification.query.filter_by(name=name, username=_session.get('username')).delete()
+        Notification.query.filter_by(name=name, username=username).delete()
         # 2. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
         notification = Notification(
             name=name,
-            username=_session.get('username'),
+            username=username,
             payload=payload
         )
         return notification.save()

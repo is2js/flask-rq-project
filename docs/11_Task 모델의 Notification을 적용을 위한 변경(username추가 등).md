@@ -90,4 +90,70 @@
    ```
    
 
-5. template이름을 tasks_finished로 바꾸고, 전체를 조회할 tasks 템플릿 생성 
+5. template이름을 tasks_finished로 바꾸고, 전체를 조회할 tasks 템플릿 생성
+
+### set_task_progress에서 생성 및 업데이트 되는 Notification
+#### 현재상황
+1. Message의 경우
+   1. 메세지.create()시 Notification name=unread_message_count + payload=새메세지갯수 생성
+   2. 메세지 확인시 Notification payload default값으로 업뎃
+2. Task의 경우
+   1. enqueue_task()시 Task.create()
+   2. Task 수행 전/후 @background_task에서 Task.update() + set_taks_progress(0 or 100)
+   3. Task 수행 도중 set_task_progress(0< < 100)
+      - set_task_progress시 get_current_job의 meta에 progress 저장
+#### 요구사항
+1. Notification 생성을 Task.create() or set_task_progress(0)에서 한다
+   - **set_task_progress(n)의 n값이 변할 때마다 Notification도 변해야하므로 Message.create()와 달리 Task는 set_progress에서 해야할 듯.**
+   ```python
+   def set_task_progress(progress):
+       job = get_current_job()
+       if job:
+           job.meta['progress'] = progress
+           job.save_meta()
+   
+           Notification.create(session, name='task_progress', payload=dict(
+               task_id=job.get_id(),
+               progress=progress,
+           ))
+   ```
+
+2. test시 Notification.create()에 필요한 session이 worker에서 작동되 http request 에러가 난다
+   - 다른모델과 달리, **Notification의 create에서는 session말고 username만 받도록 변경**
+   - **task들의 내부에 사용되는 Model 및 method는 `flask.session`이 사용되면 안된다.**
+   ```python
+    class Notification(BaseModel):
+    # ...
+    @classmethod
+    def create(cls, username, name, payload):
+        # 1. 현재사용자(in_session-username)의 알림 중
+        #    - name='unread_message_count' 에 해당하는 카테고리의 알림을 삭제하고
+        Notification.query.filter_by(name=name, username=username).delete()
+        # 2. 알림의 내용인 payload에 현재 새정보를 data key에 담아 저장하여 새 알림으로 대체한다
+        notification = Notification(
+            name=name,
+            username=username,
+            payload=payload
+        )
+        return notification.save()
+   ```
+   - **username은 job_id -> Task -> task.username으로 찾을 수 있다.**  
+   ```python
+   def set_task_progress(progress):
+       job = get_current_job()
+       if job:
+           job.meta['progress'] = progress
+           job.save_meta()
+   
+           task = Task.query.get(job.get_id())
+           Notification.create(name='task_progress', username=task.username, payload=dict(
+               task_id=task.id,
+               progress=progress,
+           ))
+   ```
+   
+3. task를 실행시켜보면 payload에 task_id + progress가 업뎃된다.
+   - background_task에서 0, 100을 넣고
+   - 각 task메서드에서 0~100 사이에 set_task_progress를 넣으면 자동으로 업뎃된다.
+
+

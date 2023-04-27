@@ -236,9 +236,7 @@ def messages():
 
     # 1-2.  noticiation초기화 추가 -> notification의 'unread_message_count'의 payload {'data': n ===> 0 }으로 업뎃시켜줘야한다.
     # => Notification create() 내부에선 기존 데이터를 삭제하고, 생성하게 된다.
-    Notification.create(session, name='unread_message_count', payload=dict(data=0))
-
-
+    Notification.create(username=session.get('username'), name='unread_message_count', payload=dict(data=0))
 
     # 2. 현재 session username으로 메세지 검색
     messages = Message.get_messages_of(session)
