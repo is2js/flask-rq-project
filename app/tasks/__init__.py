@@ -1,6 +1,5 @@
 from flask import session
 from rq import Retry
-
 from .word_counter import count_words
 from .image_uploader import create_image_set
 from .mail_sender import send_async_mail

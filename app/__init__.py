@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.config import Config
+from .utils.log import Logger
 
 # r = redis.Redis(host='redis', port=6379)  # docker상에서 service명으로 host를 사용
 r = redis.Redis.from_url(Config.REDIS_URL)
@@ -23,7 +24,6 @@ engine = create_engine("sqlite:///db.sqlite", pool_size=1, max_overflow=0) # def
 session = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
 Base = declarative_base()
 Base.query = session.query_property()
-
 
 from .models import *
 Base.metadata.create_all(bind=engine)

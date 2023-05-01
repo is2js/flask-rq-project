@@ -1,0 +1,1 @@
+FROM eoranged/rq-dashboard:latest

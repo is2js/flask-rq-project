@@ -4,7 +4,7 @@ from flask import render_template
 from flask_mail import Message
 from rq import get_current_job
 
-from app import app, mail
+from app import app, mail, Config
 from .commons import background_task, set_task_progress
 from rq import Retry
 
@@ -47,24 +47,24 @@ def send_async_mail(email_data):
 
 
 def send_mail(subject, recipients, template_name,
-              sender='rq프로젝트', attach_img_data=None, attachments=None, sync=False, **kwargs):
+              sender=Config.MAIL_SENDER, attach_img_data=None, attachments=None, sync=False, **kwargs):
 
     # 1) Message객체 생성
-    msg = Message(subject=subject, sender=sender, recipients=recipients)
+    msg = Message(subject=Config.MAIL_SUBJECT_PREFIX + subject, sender=sender, recipients=recipients)
     # msg.body, msg.html = text_body, html_body
     msg.body = render_template(template_name + '.txt', **kwargs)
     msg.html = render_template(template_name + '.html', **kwargs)
 
     # 2) [로고 이미지] inline 첨부 및 img태그로 변환
-    # if attach_img_data:
-    #     msg.attach(
-    #         filename="image.png",
-    #         content_type="image/png",
-    #         data=attach_img_data,
-    #         disposition='inline',
-    #         headers=[['Content-ID', '<image>']]
-    #     )
-    #     msg.html += '<p><img src="cid:image" height="200"></p>'
+    if attach_img_data:
+        msg.attach(
+            filename="image.png",
+            content_type="image/png",
+            data=attach_img_data,
+            disposition='inline',
+            headers=[['Content-ID', '<image>']]
+        )
+        msg.html += '<p><img src="cid:image" height="200"></p>'
 
     # 3) 첨부파일이 있으면, 순회하면서 msg.attach()에 넣어준다.
     if attachments:

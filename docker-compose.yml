@@ -84,6 +84,20 @@ services:
     networks:
       - network1
 
+  rq_dashboard:
+    container_name: rq-dashboard
+    build:
+      context: .
+      dockerfile: docker/rq-dashboard/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - RQ_DASHBOARD_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}
+    ports:
+      - "9181:9181"
+    networks:
+      - network1
+
 networks:
   network1:
     name: rq_network
