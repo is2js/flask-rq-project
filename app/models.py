@@ -1,6 +1,7 @@
 import copy
 import json
 from datetime import datetime
+from functools import wraps
 from time import time
 
 import redis.exceptions
@@ -11,6 +12,22 @@ from . import session, Base, r
 import sqlalchemy as db
 
 
+def transaction(f):
+    """ Decorator for database (session) transactions."""
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            value = f(*args, **kwargs)
+            db.session.commit()
+            return value
+        except Exception:
+            db.session.rollback()
+            raise
+
+    return wrapper
+
+
 class BaseModel(Base):
     __abstract__ = True
 
@@ -18,41 +35,53 @@ class BaseModel(Base):
     updated_at = db.Column(db.DateTime, nullable=True, default=datetime.now, onupdate=datetime.now)
 
     @classmethod
+    @transaction
     def get_list(cls):
-        try:
-            items = cls.query.all()
-            session.close()
-        except Exception:
-            session.rollback()
-            raise
+        items = cls.query.all()
+        # try:
+        #     items = cls.query.all()
+        #     session.close()
+        # except Exception:
+        #     session.rollback()
+        #     raise
         return items
 
+    @transaction
     def save(self):
-        try:
-            session.add(self)
-            session.commit()
-            return self
-        except Exception:
-            session.rollback()
-            raise
+        session.add(self)
+        return self
+        # try:
+        #     session.add(self)
+        #     session.commit()
+        #     return self
+        # except Exception:
+        #     session.rollback()
+        #     raise
 
+    @transaction
     def update(self, **kwargs):
-        try:
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-            session.commit()
-            return self
-        except Exception:
-            session.rollback()
-            raise
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        return self
+        # try:
+        #     for key, value in kwargs.items():
+        #         setattr(self, key, value)
+        #     session.commit()
+        #     return self
+        # except Exception:
+        #     session.rollback()
+        #     raise
 
+    @transaction
     def delete(self):
-        try:
-            session.delete(self)
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
+        session.delete(self)
+        return self
+        # try:
+        #     session.delete(self)
+        #     session.commit()
+        # except Exception:
+        #     session.rollback()
+        #     raise
 
 
 class Json(types.TypeDecorator):

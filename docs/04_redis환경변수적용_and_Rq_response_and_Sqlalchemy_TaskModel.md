@@ -354,7 +354,7 @@
        print(task)
        return 'get_task'
    ```
-3. **끝나지 않은 전체 Task들의 데이터  가져오기**
+3. **끝나지 않은 전체 Task들의 데이터 가져오기**
    ```python
    @app.route('/tasks-in-progress')
    def tasks_in_progress():
