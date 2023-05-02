@@ -12,6 +12,8 @@ from app import r
 from app import queue
 from app.tasks import count_words, create_image_set, enqueue_task, send_async_mail
 from app.models import Task, Message, Notification
+from app.tasks.service import TaskService
+from app.utils import logger
 
 
 # route 작성
@@ -188,10 +190,13 @@ def send_mail():
             # task = Task(id=rq_job.get_id(), name='send_mail', description=f'{template_name}으로 메일 전송')
             # task.save()
 
-            enqueue_task(send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
+            # enqueue_task(send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
+            s = TaskService()
+            s.enqueue_task(send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
 
             flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송하였습니다.', 'success')
-        except:
+        except Exception as e:
+            logger.error(str(e))
             flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송을 실패하였습니다', 'danger')
 
         return redirect(url_for('send_mail'))
@@ -203,15 +208,17 @@ def send_mail():
 def cancel_task(task_id):
     # 어차피 db와 연계되어야하기 때문에, job만 불러와 취소가 아니라, Task를 불러와 메서드로 처리한다.
 
-    # job = rq.job.Job.fetch('my_job_id', connection=redis)
-    # job.cancel()
-    # job.get_status()  # Job status is CANCELED
-    task = Task.query.get(int(task_id))
-    result = task.cancel_rq_job()
-    if result:
+    # task = Task.query.get(int(task_id))
+    # result = task.cancel_rq_job()
+    # if result:
+    s = TaskService()
+    task = s.cancel_task(task_id)
+
+
+    if task:
         flash(f'Task#{task.id} {task.name}가 취소되었습니다.', 'success')
     else:
-        flash(f'Task#{task.id} {task.name}가 이미 완료된 상태라 취소에 실패했습니다.', 'danger')
+        flash(f'Task가 이미 완료된 상태라 취소에 실패했습니다.', 'danger')
 
     # 나중에는 직접으로 돌아가도록 수정
     return redirect(url_for('send_mail'))

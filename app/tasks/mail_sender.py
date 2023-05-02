@@ -1,3 +1,4 @@
+import time
 from threading import Thread
 
 from flask import render_template
@@ -5,8 +6,11 @@ from flask_mail import Message
 from rq import get_current_job
 
 from app import app, mail, Config
-from .commons import background_task, set_task_progress
+from .decorators import background_task, set_task_progress
 from rq import Retry
+
+from app.models import Task
+
 
 @background_task
 def send_async_mail(email_data):
@@ -29,6 +33,8 @@ def send_async_mail(email_data):
 
     set_task_progress(50)
 
+    time.sleep(10)
+
     send_mail(**email_data, attach_img_data=attach_img_data, sync=True)
 
     result = {'result': 'success'}
@@ -45,10 +51,8 @@ def send_async_mail(email_data):
     #     set_task_progress(100)
 
 
-
 def send_mail(subject, recipients, template_name,
               sender=Config.MAIL_SENDER, attach_img_data=None, attachments=None, sync=False, **kwargs):
-
     # 1) Message객체 생성
     msg = Message(subject=Config.MAIL_SUBJECT_PREFIX + subject, sender=sender, recipients=recipients)
     # msg.body, msg.html = text_body, html_body

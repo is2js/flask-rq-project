@@ -2,15 +2,14 @@ import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
-from flask import current_app
+from app.config import Config
 
 
 class Logger:
     def __init__(self, log_name, backup_count=10):
         self.log_name = log_name
 
-        # self.log_dir = Config.LOG_FOLDER
-        self.log_dir = current_app.config['LOG_FOLDER']
+        self.log_dir = Config.LOG_FOLDER
         self.log_file = os.path.join(self.log_dir, f'{self.log_name}.log')
 
         self._levels = {

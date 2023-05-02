@@ -6,6 +6,7 @@ from time import time
 
 import redis.exceptions
 import rq
+from rq.command import send_stop_job_command
 from sqlalchemy import types, desc, asc
 from sqlalchemy.ext import mutable
 from . import session, Base, r
@@ -19,10 +20,10 @@ def transaction(f):
     def wrapper(*args, **kwargs):
         try:
             value = f(*args, **kwargs)
-            db.session.commit()
+            session.commit()
             return value
         except Exception:
-            db.session.rollback()
+            session.rollback()
             raise
 
     return wrapper
@@ -195,7 +196,8 @@ class Task(BaseModel):
             if rq_job.is_finished or rq_job.is_failed:
                 return False
             # 2) 대기 or 진행중인 task
-            rq_job.cancel()
+            # rq_job.cancel()
+            send_stop_job_command(self.redis, rq_job.get_id())
             rq_job.delete()
 
             # Task데이터를 완료되신 canceled로 업뎃하기

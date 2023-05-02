@@ -1,12 +1,17 @@
 from functools import wraps
 
-from flask import session
 from rq import get_current_job
 
 from app.models import Task, Notification
 
 
 def set_task_progress(progress):
+    """
+    일반 Task 정의시 내부에 or @background_task 데코 내부에서 사용되며
+    Task + Notification모델에 의존하는 중
+    :param progress:
+    :return:
+    """
     job = get_current_job()
     if job:
         job.meta['progress'] = progress
