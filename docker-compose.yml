@@ -63,8 +63,9 @@ services:
 #    rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT' => enqueue_call()에서 retry=Retry()사용후부터는 --with-scheduler 명령어를 사용해야됨.
 #      rq worker task -u 'redis://$REDIS_HOST:$REDIS_PORT' --with-scheduler
 #      rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT' --job-class=app.tasks.worker.Job --worker-class=app.tasks.worker.Worker --with-scheduler
+#      rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT' --with-scheduler
     command: bash -c "
-      rq worker -u 'redis://$REDIS_HOST:$REDIS_PORT' --with-scheduler
+      rq worker default high low -u 'redis://$REDIS_HOST:$REDIS_PORT' --with-scheduler
       "
     depends_on:
       - redis
@@ -95,8 +96,41 @@ services:
       - .env
     environment:
       - RQ_DASHBOARD_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}
+    depends_on:
+      - redis
     ports:
       - "9181:9181"
+    networks:
+      - network1
+
+
+  app-scheduler:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - FLASK_DEBUG=1
+      - FLASK_APP=manage.py
+      - FLASK_RUN_HOST=${APP_HOST}
+      - FLASK_RUN_PORT=${APP_PORT}
+      - SERVER_NAME=localhost:8000
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - MAIL_SERVER=${MAIL_SERVER}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USE_TLS=${MAIL_USE_TLS}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+    volumes:
+      - .:/app
+    command: bash -c "
+      rqscheduler -u 'redis://$REDIS_HOST:$REDIS_PORT'  -v
+      "
+    depends_on:
+      - redis
     networks:
       - network1
 

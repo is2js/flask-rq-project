@@ -181,4 +181,3 @@
         except (RedisError, NoSuchJobError):
             return False
    ```
-### TimerTask 모델 생성 및 처리하기

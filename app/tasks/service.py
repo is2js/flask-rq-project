@@ -18,6 +18,9 @@ class TaskBase(object):
         self.redis = redis.from_url(Config.REDIS_URL)
         self.asyncQueue = Queue(name=queue_name, connection=self.redis)
         self.asyncScheduler = Scheduler(queue=self.asyncQueue, connection=self.redis, interval=1)
+        # self.asyncScheduler = Scheduler(queue=self.asyncQueue, connection=self.redis)
+        # self.asyncScheduler = Scheduler(queue_name=queue_name, connection=self.redis)
+        # self.asyncScheduler = Scheduler(connection=self.redis)
         self.logger = task_logger
 
 
@@ -106,3 +109,13 @@ class TaskService(TaskBase):
             return task
         except (RedisError, NoSuchJobError):
             return False
+
+    def schedule(self):
+        job = self.asyncScheduler.enqueue_at(timestamp_to_utcdatetime(timestamp_after_timestamp(seconds=timer)),
+                                             InceptionProxy, "Execute", sqlContent, self.dbService.Get(dbId), inception,
+                                             **kwargs)
+        self.mysql.update("update incetops_task set timer_id=%s where taskId=%s", job.id, taskId)
+        self.logger.debug(self.asyncScheduler.get_jobs())
+        logger.debug(job.to_dict())
+
+        res.update(code=0, taskId=taskId)

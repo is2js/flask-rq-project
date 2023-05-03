@@ -3,6 +3,11 @@ FROM python:3.9
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+# 환경변수 설정
+ENV TZ=Asia/Seoul
+# 시간대 설정
+# RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 #COPY . /app
 #WORKDIR /app
 
@@ -17,4 +22,5 @@ WORKDIR /app
 
 RUN python -m pip install --upgrade pip && \
     pip install -r requirements.txt --root-user-action=ignore && \
-    rm -rf /root/.cache/pip
+    rm -rf /root/.cache/pip && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
