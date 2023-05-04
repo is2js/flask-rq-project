@@ -200,8 +200,3 @@
 
 
 
-### Task 모델 변경하기
-1. 일단 status에 `scheduled`를 추가해야할 것이다.
-   - enqueue_task 래핑메서드에선 `queued`를 status로 메겼지만, 
-   - **추가될 schedule_task 래핑메서드에선 `scheduled`로 시작하게 한다**
-2. 

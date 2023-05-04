@@ -5,15 +5,11 @@ import random
 from datetime import datetime, timedelta
 
 from flask import request, render_template, flash, session, redirect, url_for, jsonify
-from rq.job import Job
-from rq.registry import ScheduledJobRegistry
-from rq_scheduler import Scheduler
-from sqlalchemy import desc, asc
+from sqlalchemy import asc
 
 from app import app
-from app import r
 from app import queue
-from app.tasks import count_words, create_image_set, enqueue_task, send_async_mail
+from app.tasks import count_words, create_image_set, send_async_mail
 from app.models import Task, Message, Notification
 from app.tasks.service import TaskService
 from app.utils import logger
@@ -211,49 +207,22 @@ def send_mail():
                 s.enqueue_task(send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
                 flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송하였습니다.', 'success')
             else:
-                # high queue를 사용
-                s = TaskService(queue_name='high')
-
                 # str -> datetime 변환
                 # - 시간을 입력안한 경우의 예외처리는, 여기서 format이 안맞아서 전송 실패한다.
-                scheduled_time_str = request.form.get('scheduled_time')
-                scheduled_time = datetime.strptime(scheduled_time_str, '%Y-%m-%d %H:%M:%S')
-                scheduled_time = scheduled_time + timedelta(seconds=30)
-                # scheduled_timestamp = scheduled_time.timestamp()
+                scheduled_time_str = request.form.get('scheduled_time', None)
+                try:
+                    scheduled_time = datetime.strptime(scheduled_time_str, '%Y-%m-%d %H:%M:%S')
+                    scheduled_time = scheduled_time + timedelta(minutes=2)
+                    # scheduled_timestamp = scheduled_time.timestamp()
+                except Exception as e:
+                    logger.debug(f'시간 형식이 올바르지 않습니다.')
+                    raise ValueError(f'시간 형식이 올바르지 않습니다.')
 
-                # job = s.asyncQueue.enqueue_in(
-                #     timedelta(seconds=1),  # timedelta
-                job = s.asyncQueue.enqueue_at(
-                    scheduled_time,  # datetime
-                    print,  # func
-                    "abcdef",  # func - args
-                    # description='asdf',  # func - kwargs
-                )
-                # registry = ScheduledJobRegistry(queue=s.asyncQueue)
-                # s.logger.info(f"job in ScheduledJobRegistry(queue=queue): {job in registry}")
-                s.logger.info(f"job.to_dict(): {job.to_dict()}")
-                s.logger.info(f"job in s.asyncQueue.scheduled_job_registry : {job in s.asyncQueue.scheduled_job_registry}")
+                # high queue를 사용
+                s = TaskService(queue_name='high')
+                s.reserve_task(scheduled_time, print, 'abcde', description='설명')
 
-                # job = s.asyncQueue.enqueue_at(
-                #     scheduled_time,  # datetime
-                #     send_async_mail,  # func
-                #     email_data,  # func - args
-                #     description='asdf',  # func - kwargs
-                # )
-
-                #### 테스트를 위해 스케쥴은 다 비우기
-                # scheduled_jobs = s.asyncScheduler.get_jobs()
-                # for job in scheduled_jobs:
-                #     s.asyncScheduler.cancel(job)
-
-                # s.logger.info(f"get_jobs_to_queue: {list(s.asyncScheduler.get_jobs_to_queue())}")
-                # s.logger.info(f"job.to_dict(): {job.to_dict()}")
-                # s.logger.info(f"list(s.asyncScheduler.get_jobs()): {list(s.asyncScheduler.get_jobs())}")
-
-                # job_id = job.id
-                # job = Job.fetch(job_id, connection=s.redis)
-
-                flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일 전송을 예약({scheduled_time_str})하였습니다.', 'success')
+                flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일 전송을 예약({str(scheduled_time)})하였습니다.', 'success')
             # self.asyncQueueHigh.enqueue_call(func=InceptionProxy,
             #                                  args=("Execute", sqlContent, self.dbService.Get(dbId), inception),
             #                                  kwargs=kwargs, timeout=kwargs["timeout"])
@@ -261,14 +230,18 @@ def send_mail():
             # job = self.asyncScheduler.enqueue_at(timestamp_to_utcdatetime(timestamp_after_timestamp(seconds=timer)),
             #                                      InceptionProxy, "Execute", sqlContent, self.dbService.Get(dbId),
             #                                      inception, **kwargs)
+        except ValueError as e:
+            logger.debug(str(e))
+            flash(f'{str(e)}', 'danger')
 
         except Exception as e:
-            logger.error(str(e))
+            logger.debug(str(e))
             flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송을 실패하였습니다.', 'danger')
 
         return redirect(url_for('send_mail'))
 
     return render_template('send_mail.html', **cache)
+
 
 # task 취소
 @app.route('/task_cancel/<task_id>')

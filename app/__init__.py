@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 from flask import Flask
@@ -55,6 +56,8 @@ def make_shell_context():
         Task=Task,
         Message=Message,
         Notification=Notification,
+        datetime=datetime,
+        timedelta=timedelta
     )
 
 

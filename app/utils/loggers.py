@@ -44,7 +44,7 @@ class Logger:
         # logger with handler + levels
         self._logger = logging.getLogger(self.log_name)
         self._logger.addHandler(handler)
-        self._logger.setLevel(self._levels.get("INFO"))
+        self._logger.setLevel(self._levels.get("DEBUG"))
 
     @property
     def getLogger(self):

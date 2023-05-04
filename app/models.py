@@ -104,7 +104,7 @@ mutable.MutableDict.associate_with(Json)
 class Task(BaseModel):
     __tablename__ = 'tasks'
 
-    statuses = ['queued', 'running', 'canceled', 'finished']
+    statuses = ['queued', 'running', 'canceled', 'finished', 'reserved']
 
     # id = db.Column(db.String(36), primary_key=True)
     id = db.Column(db.Integer, primary_key=True)
@@ -122,13 +122,16 @@ class Task(BaseModel):
     # Notification을 위한 추가
     username = db.Column(db.String(6), index=True)
 
+    # timer의 수행시간
+    reserved_at = db.Column(db.DateTime, nullable=True)
+
     def __repr__(self):
         return f'<Task {self.id} {self.name}>'
 
     @classmethod
-    def create(cls, _session, name, description):
+    def create(cls, _session, name, description, status='queued'):
 
-        task = cls(name=name, description=description, username=_session.get('username'))
+        task = cls(name=name, description=description, username=_session.get('username'), status=status)
         return task.save()
 
     @classmethod
@@ -162,6 +165,18 @@ class Task(BaseModel):
 
         return query.all()
 
+    @classmethod
+    def get_reservedlist_of(cls, _session, limit=None):
+        query = cls.query.filter(
+            cls.username == _session.get('username'),
+            cls.status == 'reserved'
+        ).order_by(asc(cls.scheduled_at))
+
+        if limit:
+            query = query.limit(limit)
+
+        return query.all()
+
     def get_rq_job(self):
         try:
             rq_job = rq.job.Job.fetch(str(self.id), connection=r)
@@ -187,6 +202,7 @@ class Task(BaseModel):
             'result': self.result,
             'username': self.username,
             'progress': self.get_progress(),
+            'reserved_at': self.reserved_at
         }
 
     def cancel_rq_job(self):
