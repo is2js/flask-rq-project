@@ -11,6 +11,8 @@ function set_task_progress(task_id, progress) {
 
 function set_task_remain(task_id, task_reserved_at) {
     $('#' + task_id + '-remain').text(task_reserved_at);
+    $('#' + task_id + '-reserve-close').css('visibility', task_reserved_at === ' 남음' ? 'visible' : 'hidden');
+    $('#' + task_id + '-reserve-cancel').css('visibility', task_reserved_at === ' 남음' ? 'hidden' : 'visible');
 }
 
 /* Function updating unread messages count */

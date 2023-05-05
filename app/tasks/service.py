@@ -7,6 +7,7 @@ from redis.exceptions import RedisError
 from rq import Queue, Retry
 from rq.command import send_stop_job_command
 from rq.exceptions import NoSuchJobError
+from rq.registry import ScheduledJobRegistry
 from rq_scheduler import Scheduler
 
 from app.models import Task, Notification
@@ -113,6 +114,31 @@ class TaskService(TaskBase):
             return task
         except (RedisError, NoSuchJobError):
             return False
+
+    def cancel_reserve(self, task_id):
+        rq_job = rq.job.Job.fetch(str(task_id), connection=self.redis)
+
+
+        # self.logger.debug(f"취소 전 예약작업 여부: {rq_job in registry}")
+        # 취소 전 예약작업 여부: True
+
+        # 예약된 작업인지 확인 -> 예약작업 속에 없으면 return False
+        registry = ScheduledJobRegistry(queue=self.asyncQueue)
+        if rq_job not in registry:
+            return False
+
+        rq_job.cancel()
+        rq_job.delete()
+
+        # self.logger.debug(f"취소 후 예약작업 여부: {rq_job in registry}")
+        # 취소 후 예약작업 여부: False
+
+        task = self.model.query.get(int(task_id))
+        task.update(
+            failed=True,
+            status='canceled',  # finished가 아닌 canceled로 저장
+        )
+        return task
 
     def reserve_task(
             self,

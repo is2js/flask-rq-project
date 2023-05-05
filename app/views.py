@@ -249,7 +249,6 @@ def cancel_task(task_id):
     s = TaskService()
     task = s.cancel_task(task_id)
 
-
     if task:
         flash(f'Task#{task.id} {task.name}가 취소되었습니다.', 'success')
     else:
@@ -258,6 +257,19 @@ def cancel_task(task_id):
     # 나중에는 직접으로 돌아가도록 수정
     return redirect(url_for('send_mail'))
 
+
+@app.route('/task_reserve/<task_id>')
+def cancel_reserve(task_id):
+    s = TaskService('high')
+    task = s.cancel_reserve(task_id)
+
+    if task:
+        flash(f'예약 Task#{task.id} {task.name}가 취소되었습니다.', 'success')
+    else:
+        flash(f'예약 Task의 취소에 실패했습니다.', 'danger')
+
+    # 나중에는 직접으로 돌아가도록 수정
+    return redirect(url_for('send_mail'))
 
 
 # 미들웨어 함수
@@ -288,10 +300,11 @@ def change_username():
 
     #### 여러개를 조회할 경우 .delete()가 안먹히고, count만 반환된다.
     # -> 순회하면서 삭제하도록 변경
-    targets = Notification.query.filter(
+    # targets = Notification.query.filter(
+    targets = Notification.query.filter_by(
+        username=session.get('username')
         # Notification.query.filter_by(
-        # username=session.get('username')
-        Notification.username.like(f"{session['username']}%"),
+        # Notification.username.like(f"{session['username']}%"),
     ).all()
     for t in targets:
         t.delete()

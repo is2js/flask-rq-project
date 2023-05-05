@@ -56,7 +56,11 @@
         {% if task.status == 'reserved' %}
         <div class="alert alert-warning fade show mt-3" role="alert">
             [예약] {{ task.name }} : {{ task.reserved_at.strftime('%Y년%m월%d일 %H시 %M분 %S초')}}
-            <a id="{{ task.id }}-progress-cancel" href="{{ url_for('cancel_task', task_id=task.id) }}"
+            <button id="{{ task.id }}-reserve-close" type="button" class="close" style="visibility: hidden"
+                    data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <a id="{{ task.id }}-reserve-cancel" href="{{ url_for('cancel_reserve', task_id=task.id) }}"
                class="text-danger font-weight-bold"
                style="visibility: visible">
                 <small>

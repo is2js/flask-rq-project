@@ -493,3 +493,89 @@
        # } for n in notifications])
        return jsonify([n.to_dict() for n in notifications])
    ```
+   
+
+### 예약취소는 기존 cancel_task와는 다르다.
+- 예약을 취소했더니 `rq.exceptions.InvalidJobOperation: Job is not currently executing`가 떴다.
+- `send_stop_job_command(self.redis, rq_job.get_id())`는 **예약취소는 안된다.**
+
+
+
+1. view에서 예약취소의 url_for링크를 cancel_task대신 cancel_reserve로 변경한다
+   ```html
+   <a id="{{ task.id }}-progress-cancel" href="{{ url_for('cancel_reserve', task_id=task.id) }}"
+   ```
+   
+
+2. view에서 TaskService의 `cancel_reserve`메서드를 호출한다
+   - **이 때, 전용queue를 사용해서 처리되도록 하자. queue안에서 예약된 작업인지 확인한다.**
+   ```python
+   @app.route('/task_reserve/<task_id>')
+   def task_reserve(task_id):
+       s = TaskService('high')
+       task = s.cancel_reserve(task_id)
+   
+       if task:
+           flash(f'예약 Task#{task.id} {task.name}가 취소되었습니다.', 'success')
+       else:
+           flash(f'예약 Task의 취소에 실패했습니다.', 'danger')
+   
+       # 나중에는 직접으로 돌아가도록 수정
+       return redirect(url_for('send_mail'))
+   ```
+   
+
+3. **예약 레지스트리에 들어있는지 확인한 뒤, 통과되면 job.cancel() + delete()을 쳐보자**
+   ```python
+    def cancel_reserve(self, task_id):
+        rq_job = rq.job.Job.fetch(str(task_id), connection=self.redis)
+   
+   
+        # self.logger.debug(f"취소 전 예약작업 여부: {rq_job in registry}")
+        # 취소 전 예약작업 여부: True
+   
+        # 예약된 작업인지 확인 -> 예약작업 속에 없으면 return False
+        registry = ScheduledJobRegistry(queue=self.asyncQueue)
+        if rq_job not in registry:
+            return False
+   
+        rq_job.cancel()
+        rq_job.delete()
+   
+        # self.logger.debug(f"취소 후 예약작업 여부: {rq_job in registry}")
+        # 취소 후 예약작업 여부: False
+   
+        task = self.model.query.get(int(task_id))
+        task.update(
+            failed=True,
+            status='canceled',  # finished가 아닌 canceled로 저장
+        )
+        return task
+   ```
+   
+
+4. view에서도 `' 남음'`의 남은시간 없을 때, 취소가 될 수 있게끔 수정한다
+   ```js
+   function set_task_remain(task_id, task_reserved_at) {
+       $('#' + task_id + '-remain').text(task_reserved_at);
+       $('#' + task_id + '-reserve-close').css('visibility', task_reserved_at === ' 남음' ? 'visible' : 'hidden');
+       $('#' + task_id + '-reserve-cancel').css('visibility', task_reserved_at === ' 남음' ? 'hidden' : 'visible');
+   }
+   ```
+   ```html
+   <div class="alert alert-warning fade show mt-3" role="alert">
+      [예약] {{ task.name }} : {{ task.reserved_at.strftime('%Y년%m월%d일 %H시 %M분 %S초')}}
+      <button id="{{ task.id }}-reserve-close" type="button" class="close" style="visibility: hidden"
+              data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+      </button>
+      <a id="{{ task.id }}-reserve-cancel" href="{{ url_for('cancel_reserve', task_id=task.id) }}"
+         class="text-danger font-weight-bold"
+         style="visibility: visible">
+          <small>
+              <span id="{{ task.id }}-remain">{{task.reserved_at | remain_from_now }}</span>
+              (예약 취소)
+          </small>
+      </a>
+   </div>
+   ```
