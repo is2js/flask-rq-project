@@ -3,6 +3,7 @@ from functools import wraps
 from rq import get_current_job
 
 from app.models import Task, Notification
+from app.utils import logger
 
 
 def set_task_progress(progress):
@@ -75,6 +76,7 @@ def background_task(f):
             )
 
         except Exception as e:
+            logger.error(str(e))
             task.update(
                 failed=True,
                 status='finished',
@@ -84,3 +86,4 @@ def background_task(f):
             set_task_progress(100)
 
     return task_handler
+

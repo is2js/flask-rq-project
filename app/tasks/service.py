@@ -9,8 +9,9 @@ from rq.command import send_stop_job_command
 from rq.exceptions import NoSuchJobError
 from rq_scheduler import Scheduler
 
-from app.models import Task
+from app.models import Task, Notification
 from app.config import Config
+from app.templates.filters import remain_from_now
 from app.utils import task_logger
 
 
@@ -36,6 +37,7 @@ class TaskService(TaskBase):
     def __init__(self, queue_name='default'):
         super().__init__(queue_name=queue_name)
         self.model = Task
+        self.RESERVATION_LIMIT_SECONDS = 30
 
     def enqueue_task(self,
                      task_func,  # Task메서드용 1
@@ -57,17 +59,17 @@ class TaskService(TaskBase):
         # task.save()  # save후에는 자동으로  id가 배정되어있다.
         task = self.model.create(session, name=task_func.__name__, description=description)
         self.logger.info(f'start task...{task.name}')
-
-        # 2) enqueue대신 enqueue_call()을 사용하여 예약을 더 부드럽게 한다.
-        # -> time_out 도 제공함
         try:
+
+            # 2) enqueue대신 enqueue_call()을 사용하여 예약을 더 부드럽게 한다.
+            # -> time_out 도 제공함
             self.asyncQueue.enqueue_call(
                 func=task_func,  # task메서드
                 args=args,  # task메서드 인자1
                 kwargs=kwargs,  # task메서드 인자2
-                job_id=str(task.id),  # enqueue(job)용
                 timeout=timeout if timeout else self.timeout,
-                retry=Retry(max=3, interval=5)  # 일시적 네트워크 장애 오류시 5분간격으로 최대 3번 도전
+                retry=Retry(max=3, interval=5),  # 일시적 네트워크 장애 오류시 5분간격으로 최대 3번 도전
+                job_id=str(task.id),  # DB연동
             )
         #### enqueue시 try/except는 (Redis에러, 최대시도에러) 만 잡고, task메서드 내부에러는 못잡는다.
         except RedisError as e:
@@ -114,48 +116,76 @@ class TaskService(TaskBase):
 
     def reserve_task(
             self,
-            scheduled_time, task_func, *args,
-            description=None, timeout=None,
+            scheduled_time: datetime, task_func, *args,
+            description=None, # timeout=None,
             **kwargs
     ):
-        if scheduled_time - datetime.now() < timedelta(minutes=1):
-            self.logger.debug(f'현재보다 {1}분이내의 예약은 불가능합니다.')
-            raise ValueError(f'현재보다 {1}분이내의 예약은 불가능합니다.')
+        if scheduled_time - datetime.now() < timedelta(seconds=self.RESERVATION_LIMIT_SECONDS):
+            raise ValueError(f'현재보다 {self.RESERVATION_LIMIT_SECONDS}초 이내의 예약은 불가능합니다.')
 
         if not description:
-            self.logger.debug(f'Description required to start background job')
             raise ValueError('Description required to start background job')
 
+        # DB 연동
+        task = self.model.create(session, name=task_func.__name__, description=description,
+                                 status='reserved', reserved_at=scheduled_time)
         self.logger.info(f'schedule task start...')
+        try:
+            # job = s.asyncQueue.enqueue_in(
+            #     timedelta(seconds=1),  # timedelta
+            job = self.asyncQueue.enqueue_at(
+                scheduled_time,  # datetime
+                task_func,  # func
+                *args,  # func - args ( not tuple )
+                **kwargs,  # func - kwargs (not dict)
+                # timeout=timeout if timeout else self.timeout, # enquque_call에만 사용됨. 여기서 사용하면 task_func의 키워드인자로 인식되어버린다.
+                retry=Retry(max=3, interval=5),  # 일시적 네트워크 장애 오류시 5분간격으로 최대 3번 도전
+                job_id=str(task.id),  # DB 연동
+            )
+            self.logger.debug(f"job.to_dict(): {job.to_dict()}")
+            self.logger.debug(
+                f"job in s.asyncQueue.scheduled_job_registry : {job in self.asyncQueue.scheduled_job_registry}")
 
-        # job = s.asyncQueue.enqueue_in(
-        #     timedelta(seconds=1),  # timedelta
-        job = self.asyncQueue.enqueue_at(
-            scheduled_time,  # datetime
-            task_func,  # func
-            *args,  # func - args ( not tuple )
-            **kwargs, # func - kwargs (not dict)
-            timeout=timeout if timeout else self.timeout,
-            retry=Retry(max=3, interval=5)  # 일시적 네트워크 장애 오류시 5분간격으로 최대 3번 도전
-        )
-        # registry = ScheduledJobRegistry(queue=s.asyncQueue)
-        # s.logger.info(f"job in ScheduledJobRegistry(queue=queue): {job in registry}")
-        self.logger.debug(f"job.to_dict(): {job.to_dict()}")
-        self.logger.debug(f"job in s.asyncQueue.scheduled_job_registry : {job in self.asyncQueue.scheduled_job_registry}")
-        # job = s.asyncQueue.enqueue_at(
-        #     scheduled_time,  # datetime
-        #     send_async_mail,  # func
-        #     email_data,  # func - args
-        #     description='asdf',  # func - kwargs
-        # )
-        #### 테스트를 위해 스케쥴은 다 비우기
-        # scheduled_jobs = s.asyncScheduler.get_jobs()
-        # for job in scheduled_jobs:
-        #     s.asyncScheduler.cancel(job)
-        # s.logger.info(f"get_jobs_to_queue: {list(s.asyncScheduler.get_jobs_to_queue())}")
-        # s.logger.info(f"job.to_dict(): {job.to_dict()}")
-        # s.logger.info(f"list(s.asyncScheduler.get_jobs()): {list(s.asyncScheduler.get_jobs())}")
-        # job_id = job.id
-        # job = Job.fetch(job_id, connection=s.redis)
+            #### 예약 전송 Notification 생성
+            # - @background_task에서의 생성은 running부터 시작되는 것
+            Notification.create(
+                username=session.get('username'),
+                name='task_reserve',
+                data={
+                    'task_id': task.id,
+                    'reserved_at': scheduled_time.isoformat()
+                }
+            )
+
+            # registry = ScheduledJobRegistry(queue=s.asyncQueue)
+            # s.logger.info(f"job in ScheduledJobRegistry(queue=queue): {job in registry}")
+
+
+            #### 테스트를 위해 스케쥴은 다 비우기
+            # scheduled_jobs = s.asyncScheduler.get_jobs()
+            # for job in scheduled_jobs:
+            #     s.asyncScheduler.cancel(job)
+            # s.logger.info(f"get_jobs_to_queue: {list(s.asyncScheduler.get_jobs_to_queue())}")
+            # s.logger.info(f"job.to_dict(): {job.to_dict()}")
+            # s.logger.info(f"list(s.asyncScheduler.get_jobs()): {list(s.asyncScheduler.get_jobs())}")
+            # job_id = job.id
+            # job = Job.fetch(job_id, connection=s.redis)
+        except RedisError as e:
+            # 3) enqueue가 실패하면 Task의 failed 칼럼을 True / status를 finished로 채워준다
+            self.logger.error(str(e), exc_info=True)
+            task.update(
+                failed=True,
+                status='finished',
+                log=f'Could not connect to Redis: ' + str(e)
+            )
+        except Exception as e:
+            self.logger.error(str(e), exc_info=True)
+            # 4) enqueue가 Retry실패 등으로 Redis외 에러가 발생해도 DB에 기록
+            task.update(
+                failed=True,
+                status='finished',
+                log=f'Error: ' + str(e)
+            )
 
         self.logger.info(f'reserve task complete...')
+        return task

@@ -25,6 +25,7 @@ def send_async_mail(email_data):
                               json.dumps({'posts': data}, indent=4))], # 첨부파일 지정
     }
     """
+    # flask-mail 사용 때문에 추가
     app.app_context().push()
     ## -> 데코레이터로 이동
     # try:
@@ -33,22 +34,13 @@ def send_async_mail(email_data):
 
     set_task_progress(50)
 
-    time.sleep(10)
+    # time.sleep(10)
 
     send_mail(**email_data, attach_img_data=attach_img_data, sync=True)
 
     result = {'result': 'success'}
     return result
 
-    # except Exception as e:
-    #     task = Task.query.get(get_current_job().get_id())
-    #     task.update(
-    #         failed=True,
-    #         status='finished',
-    #         log=f'Failed for: ' + str(e)
-    #     )
-    # finally:
-    #     set_task_progress(100)
 
 
 def send_mail(subject, recipients, template_name,

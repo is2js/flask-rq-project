@@ -53,20 +53,33 @@
     {% with tasks = session.tasks_in_progress %}
     {% if session.tasks_in_progress %}
     {% for task in tasks %}
-
-    <div class="alert alert-info fade show mt-3" role="alert">
-        {{ task.description }}...
-        <span id="{{ task.id }}-progress">{{ task.progress }}</span>%
-        <button id="{{ task.id }}-progress-close" type="button" class="close" style="visibility: hidden"
-                data-dismiss="alert" aria-label="Close">
-            <span aria-hidden="true">&times;</span>
-        </button>
-        <a id="{{ task.id }}-progress-cancel" href="{{ url_for('cancel_task', task_id=task.id) }}"
-           class="text-danger font-weight-bold"
-           style="visibility: visible">
-            <small>취소</small>
-        </a>
-    </div>
+        {% if task.status == 'reserved' %}
+        <div class="alert alert-warning fade show mt-3" role="alert">
+            [예약] {{ task.name }} : {{ task.reserved_at.strftime('%Y년%m월%d일 %H시 %M분 %S초')}}
+            <a id="{{ task.id }}-progress-cancel" href="{{ url_for('cancel_task', task_id=task.id) }}"
+               class="text-danger font-weight-bold"
+               style="visibility: visible">
+                <small>
+                    <span id="{{ task.id }}-remain">{{task.reserved_at | remain_from_now }}</span>
+                    (예약 취소)
+                </small>
+            </a>
+        </div>
+        {% else %}
+        <div class="alert alert-info fade show mt-3" role=" alert">
+            {{ task.description }}...
+            <span id="{{ task.id }}-progress">{{ task.progress }}</span>%
+            <button id="{{ task.id }}-progress-close" type="button" class="close" style="visibility: hidden"
+                    data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+            <a id="{{ task.id }}-progress-cancel" href="{{ url_for('cancel_task', task_id=task.id) }}"
+               class="text-danger font-weight-bold"
+               style="visibility: visible">
+                <small>취소</small>
+            </a>
+        </div>
+        {% endif %}
     {% endfor %}
     {% endif %}
     {% endwith %}

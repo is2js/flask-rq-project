@@ -1,5 +1,4 @@
 from datetime import timedelta
-from pathlib import Path
 
 from flask import Flask
 import redis
@@ -10,7 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.config import Config
-
+from .templates.filters import remain_from_now
 
 # r = redis.Redis(host='redis', port=6379)  # docker상에서 service명으로 host를 사용
 r = redis.Redis.from_url(Config.REDIS_URL)
@@ -64,3 +63,6 @@ def make_shell_context():
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     session.remove()
+
+
+app.jinja_env.filters["remain_from_now"] = remain_from_now

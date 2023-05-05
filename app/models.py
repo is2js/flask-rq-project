@@ -1,6 +1,6 @@
 import copy
 import json
-from datetime import datetime
+from datetime import datetime, date
 from functools import wraps
 from time import time
 
@@ -11,6 +11,8 @@ from sqlalchemy import types, desc, asc
 from sqlalchemy.ext import mutable
 from . import session, Base, r
 import sqlalchemy as db
+
+from .templates.filters import remain_from_now
 
 
 def transaction(f):
@@ -27,6 +29,16 @@ def transaction(f):
             raise
 
     return wrapper
+
+
+def format_datetime(value, fmt='%Y-%m-%d %H:%M'):
+    formatted = value.strftime(fmt.encode('unicode-escape').decode()).encode().decode('unicode-escape')
+    return formatted
+
+
+def format_date(value, fmt='%Y-%m-%d'):
+    formatted = value.strftime(fmt.encode('unicode-escape').decode()).encode().decode('unicode-escape')
+    return formatted
 
 
 class BaseModel(Base):
@@ -84,6 +96,39 @@ class BaseModel(Base):
         #     session.rollback()
         #     raise
 
+    def to_dict(self):
+        data = dict()
+
+        for col in self.__table__.columns:
+            _key = col.name
+            _value = getattr(self, _key)
+
+            # {"data": [{"progress": 100, "task_id": 34}, {"progress": 100, "task_id": 35}, {"progress": 100, "task_id": 36}, {"progress": 100, "task_id": 37}, {"progress": 100, "task_id": 38}, {"progress": 100, "task_id": 39}, {"progress": 100, "task_id": 40}, {"progress": 100, "task_id": 41}, {"progress": 100, "task_id": 43}, {"progress": 100, "task_id": 42}, {"progress": 100, "task_id": 44}, {"progress": 100, "task_id": 45}, {"progress": 100, "task_id": 46}, {"progress": 100, "task_id": 47}, {"progress": 100, "task_id": 48}, {"progress": 100, "task_id": 49}]}
+            if _key == 'payload':
+                # 내부의 list를 가변변수로 받아 수정한 list를 재할당 예정.
+                data_list = _value['data']
+                for i, d in enumerate(data_list):
+                    # {"progress": 100, "task_id": 34} or {"reserved_at": "2023-05-05T18:52:03", "task_id": 33}
+                    task_notification = dict()
+                    for k, v in d.items():
+                        # reserved_at의 isoformat datetime인 경우, 'xx 남음'으로 변경
+                        if k == 'reserved_at':
+                            task_notification[k] = remain_from_now(datetime.fromisoformat(v))
+                        else:
+                            task_notification[k] = v
+                    data_list[i] = task_notification
+                # 'payload' 대신 'data' key에 넣음
+                # _value['data'] = data_list
+
+                # payload['data'] -> data['data']로 변경 for Notification
+                data['data'] = data_list
+                continue
+
+            # 나머지 들은 그대로 할당
+            data[_key] = _value
+
+        return data
+
 
 class Json(types.TypeDecorator):
     """Enables JSON storage by encoding and decoding on the fly."""
@@ -129,9 +174,11 @@ class Task(BaseModel):
         return f'<Task {self.id} {self.name}>'
 
     @classmethod
-    def create(cls, _session, name, description, status='queued'):
+    def create(cls, _session, name, description,
+               status='queued', reserved_at=None):
 
-        task = cls(name=name, description=description, username=_session.get('username'), status=status)
+        task = cls(name=name, description=description, username=_session.get('username'), status=status,
+                   reserved_at=reserved_at)
         return task.save()
 
     @classmethod
@@ -157,7 +204,8 @@ class Task(BaseModel):
         query = cls.query.filter(
             cls.username == _session.get('username'),
             # cls.status != 'finished'
-            cls.status.in_(['queued', 'running'])
+            # cls.status.in_(['queued', 'running'])
+            cls.status.notin_(['canceled', 'finished'])
         ).order_by(asc(cls.created_at))
 
         if limit:
@@ -166,7 +214,7 @@ class Task(BaseModel):
         return query.all()
 
     @classmethod
-    def get_reservedlist_of(cls, _session, limit=None):
+    def get_reserved_list_of(cls, _session, limit=None):
         query = cls.query.filter(
             cls.username == _session.get('username'),
             cls.status == 'reserved'
@@ -299,7 +347,8 @@ class Notification(BaseModel):
             # => 기존의 dict list인 payload['data']을 임시변수에 받아놓고 -> 업뎃한 뒤 -> payload['data]에 재할당 해주자.
             #    notification.payload['data'].append( data )  OR  notification.payload['data'] [idx] = data 는 업뎃이 안된다.
 
-            if name == 'task_progress':
+            # if name == 'task_progress' :
+            if name in ['task_progress', 'task_reserve']:
                 previous_list = notification.payload['data']
                 for idx, task_dict in enumerate(previous_list):
                     if data['task_id'] == task_dict['task_id']:
@@ -333,7 +382,8 @@ class Notification(BaseModel):
             # 1) 외부에서 받은 data={}를 내부적으로 payload를 dict(data=)에 넣어서 생성
             # - message -> int로 data가 들어어오면 -> dict(data= int ) 형식으로 집어넣기
             # - task_progress -> dict로 data={'task_id':, 'progress':}가 들어오면 dict(data= [  ])로 list로 감싸서 집어넣기
-            if name == 'task_progress':
+            # if name == 'task_progress':
+            if name in ['task_progress', 'task_reserve']:
                 payload = dict(data=[data])
             # elif name == 'unread_message_count':
             else:

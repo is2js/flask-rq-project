@@ -212,7 +212,7 @@ def send_mail():
                 scheduled_time_str = request.form.get('scheduled_time', None)
                 try:
                     scheduled_time = datetime.strptime(scheduled_time_str, '%Y-%m-%d %H:%M:%S')
-                    scheduled_time = scheduled_time + timedelta(minutes=2)
+                    scheduled_time = scheduled_time + timedelta(minutes=1)
                     # scheduled_timestamp = scheduled_time.timestamp()
                 except Exception as e:
                     logger.debug(f'시간 형식이 올바르지 않습니다.')
@@ -220,22 +220,17 @@ def send_mail():
 
                 # high queue를 사용
                 s = TaskService(queue_name='high')
-                s.reserve_task(scheduled_time, print, 'abcde', description='설명')
+                # s.reserve_task(scheduled_time, print, 'abcde', description='설명')
+                s.reserve_task(scheduled_time, send_async_mail, email_data, description=f'{template_name}을 이용하여 메일 전송')
 
                 flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일 전송을 예약({str(scheduled_time)})하였습니다.', 'success')
-            # self.asyncQueueHigh.enqueue_call(func=InceptionProxy,
-            #                                  args=("Execute", sqlContent, self.dbService.Get(dbId), inception),
-            #                                  kwargs=kwargs, timeout=kwargs["timeout"])
-            #
-            # job = self.asyncScheduler.enqueue_at(timestamp_to_utcdatetime(timestamp_after_timestamp(seconds=timer)),
-            #                                      InceptionProxy, "Execute", sqlContent, self.dbService.Get(dbId),
-            #                                      inception, **kwargs)
+
         except ValueError as e:
-            logger.debug(str(e))
+            logger.error(str(e))
             flash(f'{str(e)}', 'danger')
 
         except Exception as e:
-            logger.debug(str(e))
+            logger.error(str(e))
             flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송을 실패하였습니다.', 'danger')
 
         return redirect(url_for('send_mail'))
@@ -327,15 +322,17 @@ def notifications():
     since = request.args.get('since', 0.0, type=float)
 
     notifications = Notification.query.filter(
-        # Notification.username == session['username'],
-        Notification.username.like(f"{session['username']}%"),
+        Notification.username == session['username'],
+        # Notification.username.like(f"{session['username']}%"),
         Notification.created_at > since
     ).order_by(asc(Notification.created_at)).all()
 
-    return jsonify([{
-        'name': n.name,
-        'data': n.payload['data'],
-        'timestamp': n.timestamp
-    } for n in notifications])
+    # return jsonify([{
+    #     'name': n.name,
+    #     'data': n.payload['data'],
+    #     'timestamp': n.timestamp
+    # } for n in notifications])
 
+    # logger.debug([ n.to_dict() for n in notifications])
 
+    return jsonify([n.to_dict() for n in notifications])
