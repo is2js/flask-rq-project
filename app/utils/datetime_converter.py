@@ -1,3 +1,8 @@
+from datetime import datetime
+
+from pytz import utc
+
+
 def timedelta_to_remain(td):
     seconds = int(td.total_seconds())
     periods = [
@@ -17,3 +22,10 @@ def timedelta_to_remain(td):
             strings.append("%s%s" % (period_value, period_name))
 
     return "".join(strings) + " 남음"
+
+
+def datetime_to_utc(_datetime: datetime):
+    if not isinstance(_datetime, datetime):
+        raise ValueError('datetime을 입력해주세요')
+
+    return _datetime.astimezone(utc)

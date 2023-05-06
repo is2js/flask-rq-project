@@ -87,22 +87,6 @@ services:
     networks:
       - network1
 
-  rq_dashboard:
-    container_name: rq-dashboard
-    build:
-      context: .
-      dockerfile: docker/rq-dashboard/Dockerfile
-    env_file:
-      - .env
-    environment:
-      - RQ_DASHBOARD_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}
-    depends_on:
-      - redis
-    ports:
-      - "9181:9181"
-    networks:
-      - network1
-
 
   app-scheduler:
     build:
@@ -126,13 +110,32 @@ services:
       - MAIL_PASSWORD=${MAIL_PASSWORD}
     volumes:
       - .:/app
+#      rqscheduler -u 'redis://$REDIS_HOST:$REDIS_PORT'  -v
+#      rqscheduler --host $REDIS_HOST --port $REDIS_PORT --db 0  -v -i 10
     command: bash -c "
-      rqscheduler -u 'redis://$REDIS_HOST:$REDIS_PORT'  -v
+      rqscheduler --host $REDIS_HOST --port $REDIS_PORT --db 0  -v -i 5
       "
     depends_on:
       - redis
     networks:
       - network1
+
+# flask에 편입됨.
+#  rq_dashboard:
+#    container_name: rq-dashboard
+#    build:
+#      context: .
+#      dockerfile: docker/rq-dashboard/Dockerfile
+#    env_file:
+#      - .env
+#    environment:
+#      - RQ_DASHBOARD_REDIS_URL=redis://${REDIS_HOST}:${REDIS_PORT}
+#    depends_on:
+#      - redis
+#    ports:
+#      - "9181:9181"
+#    networks:
+#      - network1
 
 networks:
   network1:

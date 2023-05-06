@@ -1,5 +1,7 @@
 from datetime import timedelta
 
+import rq_dashboard
+import rq_scheduler_dashboard
 from flask import Flask
 import redis
 from flask_mail import Mail
@@ -44,11 +46,15 @@ Base.metadata.create_all(bind=engine)
 from app import views
 from app import tasks
 
+# dashboard
+app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rqdashboard")
+app.register_blueprint(rq_scheduler_dashboard.blueprint, url_prefix="/rqschedulerdashboard")
+
 
 @app.shell_context_processor
 def make_shell_context():
     from .tasks import send_async_mail
-    from .tasks.service import TaskService
+    from .tasks.service import TaskService, SchedulerService
     return dict(
         queue=queue,
         session=session,
@@ -56,7 +62,9 @@ def make_shell_context():
         Message=Message,
         Notification=Notification,
         datetime=datetime,
-        timedelta=timedelta
+        timedelta=timedelta,
+        TaskService=TaskService,
+        SchedulerService=SchedulerService,
     )
 
 
