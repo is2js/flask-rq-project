@@ -44,12 +44,14 @@ from .models import *
 Base.metadata.create_all(bind=engine)
 
 from app import views
-from app import tasks
 
 # dashboard
 app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rqdashboard")
 app.register_blueprint(rq_scheduler_dashboard.blueprint, url_prefix="/rqschedulerdashboard")
 
+# scehduler task
+from app import tasks
+tasks.init_app(app)
 
 @app.shell_context_processor
 def make_shell_context():

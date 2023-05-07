@@ -1,5 +1,9 @@
+from datetime import datetime, timedelta
+
 from flask import session
 from rq import Retry
+
+from .service import SchedulerService
 from .word_counter import count_words
 from .image_uploader import create_image_set
 from .mail_sender import send_async_mail
@@ -8,6 +12,8 @@ from app import queue
 from app.models import Task
 from redis.exceptions import RedisError
 
+from ..utils import logger
+
 
 def enqueue_task(
         task_func,  # Task메서드용 1
@@ -15,7 +21,7 @@ def enqueue_task(
         description=None,  # DB + task용
         timeout=300,  # enqueue용 (수행기다려주는 최대 시간(초))-> 5분지나면, TimeoutException  예외발생 후, 다른 task하러 간다
         **kwargs,  # Task메서드용 3
-    ):
+):
     if not description:
         raise ValueError('Description required to start background job')
 
@@ -29,12 +35,12 @@ def enqueue_task(
     # -> time_out 도 제공함
     try:
         queue.enqueue_call(
-            func=task_func, # task메서드
-            args=args, # task메서드 인자1
-            kwargs=kwargs, # task메서드 인자2
+            func=task_func,  # task메서드
+            args=args,  # task메서드 인자1
+            kwargs=kwargs,  # task메서드 인자2
             job_id=str(task.id),  # enqueue(job)용
             timeout=timeout,
-            retry=Retry(max=3, interval=5) # 일시적 네트워크 장애 오류 최대 3번 도전
+            retry=Retry(max=3, interval=5)  # 일시적 네트워크 장애 오류 최대 3번 도전
         )
     #### enqueue시 try/except는 (Redis에러, 최대시도에러) 만 잡고, task메서드 내부에러는 못잡는다.
     except RedisError as e:
@@ -56,5 +62,56 @@ def enqueue_task(
     return task
 
 
+def init_app(app):
+    # 지금부터, 몇분 간격으로 (+ 몇번을) 반복해서 실행
+    schedule_jobs = [
+        dict(
+            scheduled_time=datetime.now(),
+            task_func=print, args=['scheduler work...1'], kwargs={},
+            description='test',
+            interval=timedelta(seconds=30), #repeat=4,
+            timeout=timedelta(minutes=10),
+        ),
+        dict(
+            scheduled_time=datetime.now(),
+            task_func=print, args=['scheduler work...2'], kwargs={},
+            description='test',
+            interval=timedelta(seconds=30),# repeat=5,
+            timeout=timedelta(minutes=10),
+        ),
+    ]
 
+    # FutureWarning: Version 0.22.0+ of crontab will use datetime.utcnow() and
+    # datetime.utcfromtimestamp() instead of datetime.now() and datetime.fromtimestamp() as was previous.
+    cron_jobs = [
+        dict(
+            cron_string="33 23 * * *",
+            task_func=print, args=['cron job 1'], kwargs={},
+            description='test',
+            timeout=timedelta(minutes=10),
+        ),
+    ]
 
+    scheduler_service = SchedulerService()
+
+    # for job in schedule_jobs:
+    for job in schedule_jobs + cron_jobs:
+        try:
+            # 이미 존재하는 작업인지 확인하고, 존재하는 job이면 cancel+delete까지 해주기
+            existed_schedule = scheduler_service.exists(job)
+            if existed_schedule:
+                scheduler_service.cancel_schedule(existed_schedule)
+
+            if 'scheduled_time' in job:
+                scheduler_service.schedule(
+                    **job
+                )
+            elif 'cron_string' in job:
+                scheduler_service.cron(
+                    **job
+                )
+            else:
+                ...
+
+        except Exception as e:
+            logger.error(f'Schedule register Error: {str(e)}')
