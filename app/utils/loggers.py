@@ -54,3 +54,4 @@ class Logger:
 logger = Logger("sys").getLogger
 task_logger = Logger("task").getLogger
 schedule_logger = Logger("scheduler").getLogger
+parse_logger = Logger("parse").getLogger
