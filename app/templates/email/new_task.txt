@@ -1,7 +1,7 @@
 Task[{{ task.name }}]이 등록되었습니다.
 - {{ task.description }}
 
-{{ url_for('get_task', name=task.name, _external=True) }}
+{{ url_for('main.get_task', name=task.name, _external=True) }}
 
 특정 Task의 진행도를 확인해주세요.
 Sincerely, Thanks. from The rq 프로젝트

@@ -106,7 +106,7 @@
     # new_task.txt
     {{ task.description }} 할 일이 등록되었습니다.
     
-    {{ url_for('get_task', name=task.name, _external=True) }}
+    {{ url_for('main.get_task', name=task.name, _external=True) }}
     
     특정 Task의 진행도를 확인해주세요.
     
@@ -117,7 +117,7 @@
     ```html
     <p>{{ task.description }} 할 일이 등록되었습니다.</p>
     <p>
-        <a href="{{ url_for('get_task', name=task.name, _external=True) }}">
+        <a href="{{ url_for('main.get_task', name=task.name, _external=True) }}">
             여기
         </a>에서 특정 Task의 진행도를 확인해주세요.
     </p>

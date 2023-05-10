@@ -8,7 +8,7 @@ from .word_counter import count_words
 from .image_uploader import create_image_set
 from .mail_sender import send_async_mail
 
-from app import queue
+from app.extentions import queue
 from app.models import Task
 from redis.exceptions import RedisError
 

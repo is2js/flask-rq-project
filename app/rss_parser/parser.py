@@ -1,11 +1,15 @@
-from pprint import pprint
+from datetime import datetime, timedelta
+from time import mktime
 
 import feedparser
+import pytz
 import requests
 from bs4 import BeautifulSoup
 from opengraph_py3 import OpenGraph
 
 from app.utils.loggers import parse_logger
+
+from dateutil import parser
 
 
 class BaseParser(object):
@@ -22,14 +26,17 @@ class BaseParser(object):
         self._og_image_url = None
 
     def requests_url(self, url, headers=None, params=None):
+        response = requests.get(url, headers=self.headers if not headers else headers, params=params, timeout=3)
         try:
-            response = requests.get(url, headers=self.headers if not headers else headers, params=params)
             # if response.status_code != 200:
             #     raise requests.HTTPError
             response.raise_for_status()  # Raises :class:`HTTPError`, if one occurred.
             return response.text
+        except requests.exceptions.ReadTimeout:
+            parse_logger.error(f'[ReadTimeout] requests 요청 실패(target_id: {self.target_id}, url: {url})')
+            return False
         except requests.HTTPError:
-            parse_logger.error(f'requests 요청 실패(target_id: {self.target_id}, url: {url})')
+            parse_logger.error(f'[HTTPError] requests 요청 실패(target_id: {self.target_id}, url: {url})')
             return False
 
     def parse(self):
@@ -45,7 +52,7 @@ class BaseParser(object):
 
         total_count = len(feed.entries)
         if total_count == 0:
-            parse_logger.error(f'현재 target_id({self.target_id})에 feed들이 하나도 존재 하지 않습니다.')
+            parse_logger.error(f'{self.__class__.__name__}의 target_id({self.target_id})에 feed들이 하나도 존재 하지 않습니다.')
             return False
 
         # Print 블로그 정보가 'feed'에 담겨있음.
@@ -53,11 +60,11 @@ class BaseParser(object):
         print('------------')
         source = feed['feed']
 
-        print(f"출저 타입: {source['generator']}")
-        self._source_url = source['link']
+        print(f"출저 타입: {source.get('generator', None)}")  # 유튜브엔 없다
+        self._source_url = source.get('link', None)
         print(f"출저 url: {self._source_url}")
-        print(f"출저 제목: {source['title']}")
-        print(f"출저 부제목: {source['subtitle']}")
+        print(f"출저 제목: {source.get('title', None)}")
+        print(f"출저 부제목: {source.get('subtitle', None)}")
         print(f'총 글 갯수: {total_count}')
 
         thumb_count = 0
@@ -70,16 +77,36 @@ class BaseParser(object):
             # print(f'제목: {entry.get("title")}')
             print(f'제목: {_get_text_title(entry.get("title"))}')
             thumbnail = _get_thumbnail(entry) or self._get_og_image_url() or \
-                self._get_naver_post_image_url(entry.get("link"))
+                        self._get_naver_post_image_url(entry.get("link"))
 
             if thumbnail:
                 thumb_count += 1
             print(f'thumbnail : {thumbnail}')
             # print(f'내용: {entry.get("summary")}')
-            # print(f'내용: {_get_text_body(entry)}')
+            print(f'내용: {_get_text_body(entry)}')
             print(f'링크: {entry.get("link")}')
+
             # 날짜: 2019-02-21 02:18:24
-            print(f'날짜: {_struct_to_datetime(entry.get("published_parsed"))}')
+            # 1) published_parsed + mktime + fromtimestamp + pytz
+            # utc_published = time_struct_to_utc_datetime(entry.get("published_parsed"))
+
+            # 2) published + datetutil + pytz
+            utc_published = parser.parse(entry.get('published'))
+            print("published + dateutil.parser", utc_published, type(utc_published))
+            kst_published = utc_to_local(utc_published)
+            print("published + dateutil.parser + utc_to_local", kst_published, type(kst_published))
+
+            # 출력용
+            kst_published = utc_to_local(utc_published)
+            print(f'날짜: {kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}')
+
+            # 필터링용
+            target_date = _get_utc_target_date(before_days=1)
+            print("target_date['start']", target_date['start'])
+            print("utc_published", utc_published)
+            print("target_date['end']", target_date['end'])
+            is_target = target_date['start'] <= utc_published <= target_date['end']
+            print(f'업데이트 대상 여부: {is_target}')
             # break
         print("thumb_count", thumb_count)
         return feed
@@ -161,15 +188,54 @@ def _get_category(tags):
     return None
 
 
-def _struct_to_datetime(published_parsed):
+def time_struct_to_utc_datetime(published_parsed):
+    """
+    time_struct(utc, string) -> naive datetime -> utc datetime by pytz
+    """
     if not published_parsed:
         return None
 
-    from datetime import datetime
-    from time import mktime
-
     # mktime -> seconds로 바꿔줌 +  fromtimestamp -> seconds를 datetime으로 바꿔줌
-    return datetime.fromtimestamp(mktime(published_parsed))
+    naive_datetime = datetime.fromtimestamp(mktime(published_parsed))  # utc naive
+
+    utc_datetime = pytz.utc.localize(naive_datetime)  # utc aware [필수]
+    return utc_datetime
+
+
+def utc_to_local(utc_datetime, zone='Asia/Seoul'):
+    # 한번 localize를 쓰면, 또는 안됨. utc만 하고, astimezone( pytz.timezone('local'))로 바꿔주기)
+    local_datetime = utc_datetime.astimezone(pytz.timezone(zone))  # utc ware -> kst aware
+
+    # 그래서 pytz를 사용할 때는 pytz.timezone.localize()를 항상 써야 하고, .astimezone()같은 파이썬의 표준 메서드들을 사용하고 싶다면 datetime.timezone을 사용해야 합니다.
+    # SQLAlchemy DB 모델 객체의 DateTime 컬럼에서 timezone=True 옵션을 켜서 사용하고 있습니다.
+    # => DateTime 칼럼에 timezone=True 옵션을 사용하면, SQLAlchemy에서 내부적으로 datetime 객체를 UTC로 저장합니다. 따라서, 별도로 datetime 객체를 UTC로 변환해주지 않아도 자동으로 UTC로 저장됩니다.
+    #   class MyModel(Base):
+    #     __tablename__ = 'my_table'
+    #     id = Column(Integer, primary_key=True)
+    #     my_datetime = Column(DateTime(timezone=True))
+
+    #   my_object = MyModel(my_datetime=kst_time)
+
+    return local_datetime  # 외부에서 strftime
+
+
+def _get_utc_target_date(before_days=1, zone='Asia/Seoul'):
+    #### 익명 now -> KST now -> KST now -1일 00:00 ~ 23:59 -> utc -1일 00:00 ~ 23:59
+
+    # 1.  unkownn now -> kst now
+    local_now = pytz.timezone(zone).localize(datetime.now())
+
+    # 2.  kst now -> kst target_datetime
+    kst_target_datetime = local_now - timedelta(days=before_days)
+
+    # 3.  kst target_datetime -> kst target_date 0시 + 23시59분(.replace) -> utc target_date 시작시간 + 끝시간
+    # - replace로 timezone을 바꾸지 말 것.
+    utc_target_start = kst_target_datetime.replace(hour=0, minute=0, second=0, microsecond=0) \
+        .astimezone(pytz.utc)
+    utc_target_end = kst_target_datetime.replace(hour=23, minute=59, second=59, microsecond=999999) \
+        .astimezone(pytz.utc)
+
+    return dict(start=utc_target_start, end=utc_target_end)
 
 
 def _get_shortest_html_body(entry):
@@ -273,9 +339,38 @@ class NaverParser(BaseParser):
         self._url = f"https://rss.blog.naver.com/{self.target_id}.xml"
 
 
+youtube_settings = dict(
+    # channel_id= "UChZt76JR2Fed1EQ_Ql2W_cw",
+    playlist_id="PLjOVTdDf5WwKcFSteiDyPA09toLYZcD1p",
+)
+
+
+def _build_youtube_url(target_id):
+    # 조합: https://github.com/Zaltu/youtube-rss-email/blob/master/BetterYoutube/youtube_utils.py
+
+    BASE_URL = 'https://www.youtube.com/feeds/videos.xml?'
+
+    if target_id.startswith("UC"):
+        return BASE_URL + '&' + 'channel_id' + '=' + target_id
+    elif target_id.startswith("PL"):
+        return BASE_URL + '&' + 'playlist_id' + '=' + target_id
+    else:
+        raise ValueError(f'UC 또는 PL로 시작해야합니다. Unvalid target_id: {target_id}')
+
+
+class YoutubeParser(BaseParser):
+    def __init__(self, target_id):
+        super().__init__(target_id)
+        self._url = _build_youtube_url(target_id)
+
+
 if __name__ == '__main__':
     # tistory_parser = TistoryParser('nittaku')
     # tistory_parser.parse()
 
-    naver_parser = NaverParser('studd')
-    naver_parser.parse()
+    # naver_parser = NaverParser('is2js')
+    # naver_parser.parse()
+    #
+    # youtube_parser = YoutubeParser('UCv4re-peeCgLz3m1OJcZirA')
+    youtube_parser = YoutubeParser('UC-lgoofOVXSoOdRf5Ui9TWw')
+    youtube_parser.parse()

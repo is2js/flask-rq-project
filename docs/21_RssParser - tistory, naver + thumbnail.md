@@ -276,6 +276,9 @@ class BaseParser(object):
             #     raise requests.HTTPError
             response.raise_for_status()  # Raises :class:`HTTPError`, if one occurred.
             return response.text
+        except requests.exceptions.ReadTimeout:
+            parse_logger.error(f'[ReadTimeout] requests 요청 실패(target_id: {self.target_id}, url: {url})')
+            return False
         except requests.HTTPError:
             parse_logger.error(f'requests 요청 실패(target_id: {self.target_id}, url: {url})')
             return False
@@ -284,6 +287,7 @@ class BaseParser(object):
         result_text = self.requests_url(self._url)
         if not result_text:
             return False
+        #...
 ```
 
 

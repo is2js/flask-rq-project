@@ -76,7 +76,7 @@ def background_task(f):
             )
 
         except Exception as e:
-            logger.error(str(e))
+            logger.error(str(e), exc_info=True)
             task.update(
                 failed=True,
                 status='finished',

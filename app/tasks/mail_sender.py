@@ -1,16 +1,15 @@
 import time
 from threading import Thread
 
-from flask import render_template
 from flask_mail import Message
-from rq import get_current_job
-
-from app import app, mail, Config
+from app.config import Config
 from .decorators import background_task, set_task_progress
 from rq import Retry
 
 from app.models import Task
-
+from ..extentions import mail
+from flask import render_template
+from app import create_app
 
 @background_task
 def send_async_mail(email_data):
@@ -26,6 +25,7 @@ def send_async_mail(email_data):
     }
     """
     # flask-mail 사용 때문에 추가
+    app = create_app()
     app.app_context().push()
     ## -> 데코레이터로 이동
     # try:

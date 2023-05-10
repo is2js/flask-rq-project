@@ -9,7 +9,8 @@ import rq
 from rq.command import send_stop_job_command
 from sqlalchemy import types, desc, asc
 from sqlalchemy.ext import mutable
-from . import session, Base, r
+from . import session, Base
+from .extentions import r
 import sqlalchemy as db
 
 from .templates.filters import remain_from_now

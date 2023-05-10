@@ -4,24 +4,23 @@ import string
 import random
 from datetime import datetime, timedelta
 
-from flask import request, render_template, flash, session, redirect, url_for, jsonify
+from flask import request, render_template, flash, session, redirect, url_for, jsonify, Blueprint, current_app as app
 from sqlalchemy import asc
-
-from app import app
-from app import queue
+from app.extentions import queue
 from app.tasks import count_words, create_image_set, send_async_mail
 from app.models import Task, Message, Notification
 from app.tasks.service import TaskService
 from app.utils import logger
 
+main_bp = Blueprint('main', __name__)
 
 # route 작성
-@app.route('/')
+@main_bp.route('/')
 def index():
     return "Hello world222"
 
 
-@app.route('/word-counter', methods=['GET', 'POST'])
+@main_bp.route('/word-counter', methods=['GET', 'POST'])
 def word_counter():
     # 1. q.jobs로 현재의 queue의 jobs를 가져올 수 있다. -> jinja에 사용한다
     # - viewㅇ선 job.args / job.id / job.status / job.created_at.strftime() / job.enqueued_at.strftime() 을 사용한다
@@ -44,7 +43,7 @@ def word_counter():
     return render_template('word_counter.html', message=message, jobs=jobs)
 
 
-@app.route('/upload-image', methods=['GET', 'POST'])
+@main_bp.route('/upload-image', methods=['GET', 'POST'])
 def upload_image():
     view_url = None
 
@@ -76,12 +75,12 @@ def upload_image():
     return render_template('upload_image.html', view_url=view_url)
 
 
-@app.route('/image/<image_dir_name>/<image_file_name>')
+@main_bp.route('/image/<image_dir_name>/<image_file_name>')
 def view_image(image_dir_name, image_file_name):
     return render_template('view_image.html', image_dir_name=image_dir_name, image_file_name=image_file_name)
 
 
-@app.route('/launch-task/<name>/<args>/<description>')
+@main_bp.route('/launch-task/<name>/<args>/<description>')
 def launch_task(name, args, description):
     # 1) 특정 task를 인자를 넣어 enqueue한다
     # -> enqueue해야 fetch로 받아올 job의 id를 받아온다.
@@ -94,7 +93,7 @@ def launch_task(name, args, description):
     return 'launch_task'
 
 
-@app.route('/task/<name>')
+@main_bp.route('/task/<name>')
 def get_task(name):
     # task = Task.query.filter_by(name=name, status=False).first()
     task = Task.query.filter(
@@ -104,7 +103,7 @@ def get_task(name):
     return 'get_task'
 
 
-@app.route('/tasks-in-progress')
+@main_bp.route('/tasks-in-progress')
 def tasks_in_progress():
     tasks = Task.query.filter(
         Task.status.in_(['queued', 'running'])
@@ -114,7 +113,7 @@ def tasks_in_progress():
 
 
 #### TEST
-@app.route('/send-new-task-mail')
+@main_bp.route('/send-new-task-mail')
 def send_new_task_mail():
     # queue에 넣어야 id가 발급되는데, enqueue시 Task의 정보가 필요함.
     task = Task(name='form.name', description='form.desc')
@@ -136,7 +135,7 @@ def send_new_task_mail():
     return "success"
 
 
-@app.route('/send-mail', methods=['GET', 'POST'])
+@main_bp.route('/send-mail', methods=['GET', 'POST'])
 def send_mail():
     # session을 통해 캐슁된 데이터가 있으면, GET화면에서 같이 가지고 간다.
     cache = {
@@ -233,13 +232,13 @@ def send_mail():
             logger.error(str(e))
             flash(f'[{recipient}]에게 [{template_name} ]템플릿 메일을 전송을 실패하였습니다.', 'danger')
 
-        return redirect(url_for('send_mail'))
+        return redirect(url_for('main.send_mail'))
 
     return render_template('send_mail.html', **cache)
 
 
 # task 취소
-@app.route('/task_cancel/<task_id>')
+@main_bp.route('/task_cancel/<task_id>')
 def cancel_task(task_id):
     # 어차피 db와 연계되어야하기 때문에, job만 불러와 취소가 아니라, Task를 불러와 메서드로 처리한다.
 
@@ -255,10 +254,10 @@ def cancel_task(task_id):
         flash(f'Task가 이미 완료된 상태라 취소에 실패했습니다.', 'danger')
 
     # 나중에는 직접으로 돌아가도록 수정
-    return redirect(url_for('send_mail'))
+    return redirect(url_for('main.send_mail'))
 
 
-@app.route('/task_reserve/<task_id>')
+@main_bp.route('/task_reserve/<task_id>')
 def cancel_reserve(task_id):
     s = TaskService('high')
     task = s.cancel_reserve(task_id)
@@ -269,11 +268,11 @@ def cancel_reserve(task_id):
         flash(f'예약 Task의 취소에 실패했습니다.', 'danger')
 
     # 나중에는 직접으로 돌아가도록 수정
-    return redirect(url_for('send_mail'))
+    return redirect(url_for('main.send_mail'))
 
 
 # 미들웨어 함수
-@app.before_request
+@main_bp.before_request
 def before_request():
     # 2. 쿼리스트링에 지정된 username이 있다면, 그녀석으로 username사용
     if request.args.get('username'):
@@ -293,7 +292,7 @@ def before_request():
     session['tasks_in_progress'] = [task.to_dict() for task in Task.get_unfinished_list_of(session)]
 
 
-@app.route('/change_username')
+@main_bp.route('/change_username')
 def change_username():
     # 해당username의 저장된 데이터 Message를 삭제한다.
     Message.query.filter_by(recipient=session.get('username')).delete()
@@ -312,10 +311,10 @@ def change_username():
     # 처리할 거 다하고 session.clear()를 써도 된다.
     session.clear()
 
-    return redirect(url_for('send_mail'))
+    return redirect(url_for('main.send_mail'))
 
 
-@app.route('/messages')
+@main_bp.route('/messages')
 def messages():
     # 1. 마지막 읽은 시간 update -> new_message가 0으로 뽑힐 것이다.
     session['last_message_read_time'] = datetime.now()
@@ -330,7 +329,7 @@ def messages():
     return render_template('messages.html', messages=messages)
 
 
-@app.route('/notifications')
+@main_bp.route('/notifications')
 def notifications():
     since = request.args.get('since', 0.0, type=float)
 

@@ -22,8 +22,8 @@
 
 
 <div class="container">
-    {{session.username}}으로 접속되었습니다. <a href="{{ url_for('change_username') }}">사용자 변경</a>
-    <a href="{{ url_for('messages') }}">
+    {{session.username}}으로 접속되었습니다. <a href="{{ url_for('main.change_username') }}">사용자 변경</a>
+    <a href="{{ url_for('main.messages') }}">
         Message
         <span id="message_count"
               class="badge"
@@ -60,7 +60,7 @@
                     data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>
-            <a id="{{ task.id }}-reserve-cancel" href="{{ url_for('cancel_reserve', task_id=task.id) }}"
+            <a id="{{ task.id }}-reserve-cancel" href="{{ url_for('main.cancel_reserve', task_id=task.id) }}"
                class="text-danger font-weight-bold"
                style="visibility: visible">
                 <small>
@@ -77,7 +77,7 @@
                     data-dismiss="alert" aria-label="Close">
                 <span aria-hidden="true">&times;</span>
             </button>
-            <a id="{{ task.id }}-progress-cancel" href="{{ url_for('cancel_task', task_id=task.id) }}"
+            <a id="{{ task.id }}-progress-cancel" href="{{ url_for('main.cancel_task', task_id=task.id) }}"
                class="text-danger font-weight-bold"
                style="visibility: visible">
                 <small>취소</small>

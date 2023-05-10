@@ -5,9 +5,10 @@ from bs4 import BeautifulSoup
 
 from rq import get_current_job
 
-from app.email import send_mail
 from app.models import Task
-from app import app
+from flask import current_app as app
+
+from app.tasks.mail_sender import send_mail
 
 
 def _set_task_progress(progress):
