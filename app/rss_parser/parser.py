@@ -40,14 +40,14 @@ class BaseParser(object):
             return False
 
     def parse(self):
-        # feed = feedparser.parse(self._url)
-        # if feed.status != 200:
-        #     return False
 
         result_text = self.requests_url(self._url)
         if not result_text:
             return False
 
+        # feed = feedparser.parse(self._url)
+        # if feed.status != 200:
+        #     return False
         feed = feedparser.parse(result_text)
 
         total_count = len(feed.entries)
@@ -55,12 +55,11 @@ class BaseParser(object):
             parse_logger.error(f'{self.__class__.__name__}의 target_id({self.target_id})에 feed들이 하나도 존재 하지 않습니다.')
             return False
 
-        # Print 블로그 정보가 'feed'에 담겨있음.
-        # - https://waylonwalker.com/parsing-rss-python/
-        print('------------')
         source = feed['feed']
 
-        print(f"출저 타입: {source.get('generator', None)}")  # 유튜브엔 없다
+        # print(f"출저 타입: {source.get('generator', None)}")  # 유튜브엔 없다
+        # yield로 1개씩 방출하면서, 그 부모의 name을 data에 추가 삽입 예정
+
         self._source_url = source.get('link', None)
         print(f"출저 url: {self._source_url}")
         print(f"출저 제목: {source.get('title', None)}")
@@ -69,22 +68,34 @@ class BaseParser(object):
 
         thumb_count = 0
 
-        # Print 각 글들은 entries에 담겨있음. all title in entries
-        # - 1개만 출력
         for entry in feed.entries:
-            print('==============')
-            print(f'카테고리: {_get_category(entry.get("tags"))}')
-            # print(f'제목: {entry.get("title")}')
-            print(f'제목: {_get_text_title(entry.get("title"))}')
+            # print('==============')
+            # 1개씩 for문내부에서 만든 dict를 yield하여 부모에게 방출
+            data = dict()
+            # url이 uniquekey라서 id로 삽입할 예정인데, id가 있다면 id로 넣고 없으면 url로 넣자
+            # if 'id' in entry:
+            #     data['id'] = entry['id']
+            # else:
+            #     data['id'] = entry.get('link')
+
+            # print(f'링크: {entry.get("link")}')
+            data['url'] = entry.get("link")
+
+            # print(f'카테고리: {_get_category(entry.get("tags"))}')
+            data['category'] = _get_category(entry.get("tags"))
+
+            # print(f'제목: {_get_text_title(entry.get("title"))}')
+            data['title'] = _get_text_title(entry.get("title"))
+
+            # if thumbnail:
+            #     thumb_count += 1
+            # print(f'thumbnail : {thumbnail}')
             thumbnail = _get_thumbnail(entry) or self._get_og_image_url() or \
                         self._get_naver_post_image_url(entry.get("link"))
+            data['thumbnail_url'] = thumbnail
 
-            if thumbnail:
-                thumb_count += 1
-            print(f'thumbnail : {thumbnail}')
-            # print(f'내용: {entry.get("summary")}')
-            print(f'내용: {_get_text_body(entry)}')
-            print(f'링크: {entry.get("link")}')
+            # print(f'내용: {_get_text_body(entry)}')
+            data['body'] = _get_text_body(entry)
 
             # 날짜: 2019-02-21 02:18:24
             # 1) published_parsed + mktime + fromtimestamp + pytz
@@ -92,24 +103,27 @@ class BaseParser(object):
 
             # 2) published + datetutil + pytz
             utc_published = parser.parse(entry.get('published'))
-            print("published + dateutil.parser", utc_published, type(utc_published))
-            kst_published = utc_to_local(utc_published)
-            print("published + dateutil.parser + utc_to_local", kst_published, type(kst_published))
+            # print("published + dateutil.parser", utc_published, type(utc_published))
+            data['published'] = utc_published
 
             # 출력용
             kst_published = utc_to_local(utc_published)
-            print(f'날짜: {kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}')
+            # print(f'날짜: {kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}')
+            data['published_string'] = kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초") # .strftime("%Y년 %m월 %d일 %H시 %M분 %S초")
 
             # 필터링용
-            target_date = _get_utc_target_date(before_days=1)
-            print("target_date['start']", target_date['start'])
-            print("utc_published", utc_published)
-            print("target_date['end']", target_date['end'])
-            is_target = target_date['start'] <= utc_published <= target_date['end']
-            print(f'업데이트 대상 여부: {is_target}')
+            # target_date = _get_utc_target_date(before_days=1)
+            # print("target_date['start']", target_date['start'])
+            # print("utc_published", utc_published)
+            # print("target_date['end']", target_date['end'])
+            # is_target = target_date['start'] <= utc_published <= target_date['end']
+            # print(f'업데이트 대상 여부: {is_target}')
             # break
-        print("thumb_count", thumb_count)
-        return feed
+
+            yield data
+
+        # print("thumb_count", thumb_count)
+        # return feed
 
     def _get_og_image_url(self):
         if self._og_image_url:
@@ -339,10 +353,10 @@ class NaverParser(BaseParser):
         self._url = f"https://rss.blog.naver.com/{self.target_id}.xml"
 
 
-youtube_settings = dict(
-    # channel_id= "UChZt76JR2Fed1EQ_Ql2W_cw",
-    playlist_id="PLjOVTdDf5WwKcFSteiDyPA09toLYZcD1p",
-)
+# youtube_settings = dict(
+#     # channel_id= "UChZt76JR2Fed1EQ_Ql2W_cw",
+#     playlist_id="PLjOVTdDf5WwKcFSteiDyPA09toLYZcD1p",
+# )
 
 
 def _build_youtube_url(target_id):
@@ -367,10 +381,17 @@ class YoutubeParser(BaseParser):
 if __name__ == '__main__':
     # tistory_parser = TistoryParser('nittaku')
     # tistory_parser.parse()
+    # for feed in tistory_parser.parse():
+    #     print(feed)
 
-    # naver_parser = NaverParser('is2js')
+    naver_parser = NaverParser('is2js')
     # naver_parser.parse()
-    #
-    # youtube_parser = YoutubeParser('UCv4re-peeCgLz3m1OJcZirA')
-    youtube_parser = YoutubeParser('UC-lgoofOVXSoOdRf5Ui9TWw')
-    youtube_parser.parse()
+    for feed in naver_parser.parse():
+        print(feed)
+
+    # youtube_parser = YoutubeParser('UC-lgoofOVXSoOdRf5Ui9TWw') # 쌍보네TV
+    # youtube_parser.parse()
+
+    # youtube_parser = YoutubeParser('UChZt76JR2Fed1EQ_Ql2W_cw') # 재성
+    # for feed in youtube_parser.parse():
+    #     print(feed)
