@@ -379,9 +379,10 @@ class BaseParser(object):
    
 
 #### Naver는 rss entries에서 못찾아오니, bs4로 직접 파싱해야한다
+
 ```python
 def _get_naver_post_image_url(self, post_url, first_image=True):
-    result_text = self.requests_url(post_url)
+    result_text = requests_url(self.headers, self.target_id, post_url)
     if not result_text:
         return None
 
@@ -396,7 +397,6 @@ def _get_naver_post_image_url(self, post_url, first_image=True):
 
     main_frame_html = requests.get(main_frame_url).text
     parsed_main_frame = BeautifulSoup(main_frame_html, features="html.parser")
-
 
     post_1_div_element = next(iter(parsed_main_frame.select('div#post_1')), None)
     if post_1_div_element is None:
@@ -432,7 +432,8 @@ def _get_naver_post_image_url(self, post_url, first_image=True):
 
     # 하나도 없으면 탈락
     if len(image_urls) == 0:
-        parse_logger.debug(f'해당 Naver#{self.target_id}에 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
+        parse_logger.debug(
+            f'해당 Naver#{self.target_id}에 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
         return None
 
     # 하나라도 있으면, 첫번째 것만 반환

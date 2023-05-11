@@ -7,52 +7,40 @@ import requests
 from bs4 import BeautifulSoup
 from opengraph_py3 import OpenGraph
 
+from .utils import requests_url
 from app.utils.loggers import parse_logger
 
 from dateutil import parser
 
 
-class BaseParser(object):
-    def __init__(self, target_id):
-        self.target_id = target_id
-        self._url = None  # 공통 parse함수를 위해, 미리 초기화
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
-        }
+class RssParser(object):
+    # def __init__(self, target_id):
+    def __init__(self):
+        # self.target_id = target_id
+        # self._url = None  # 공통 parse함수를 위해, 미리 초기화
+        # self.headers = {
+        #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
+        # }
         # og:image 를 가져오기 위한, 첫번째 parse때 저장되는 blog의 url
         # - entry의 link로 og:image구하면, 티스토리 이미지가 나옴 ->  블로그의 og:image는 지정한 이미지가 나옴
         # - og:image는 thumbnail없는 경우 공통이므로, 1번 구해놓고 상태값으로 줘 -> 재활용
         self._source_url = None
         self._og_image_url = None
 
-    def requests_url(self, url, headers=None, params=None):
-        response = requests.get(url, headers=self.headers if not headers else headers, params=params, timeout=3)
-        try:
-            # if response.status_code != 200:
-            #     raise requests.HTTPError
-            response.raise_for_status()  # Raises :class:`HTTPError`, if one occurred.
-            return response.text
-        except requests.exceptions.ReadTimeout:
-            parse_logger.error(f'[ReadTimeout] requests 요청 실패(target_id: {self.target_id}, url: {url})')
-            return False
-        except requests.HTTPError:
-            parse_logger.error(f'[HTTPError] requests 요청 실패(target_id: {self.target_id}, url: {url})')
-            return False
+    def parse(self, text):
 
-    def parse(self):
-
-        result_text = self.requests_url(self._url)
-        if not result_text:
-            return False
+        # result_text = requests_url(self.headers, self.target_id, self._url)
+        # if not result_text:
+        #     return False
 
         # feed = feedparser.parse(self._url)
         # if feed.status != 200:
         #     return False
-        feed = feedparser.parse(result_text)
+        feed = feedparser.parse(text)
 
         total_count = len(feed.entries)
         if total_count == 0:
-            parse_logger.error(f'{self.__class__.__name__}의 target_id({self.target_id})에 feed들이 하나도 존재 하지 않습니다.')
+            parse_logger.error(f'feed들이 하나도 존재 하지 않습니다.')
             return False
 
         source = feed['feed']
@@ -138,7 +126,7 @@ class BaseParser(object):
         return self._og_image_url
 
     def _get_naver_post_image_url(self, post_url, first_image=True):
-        result_text = self.requests_url(post_url)
+        result_text = requests_url(post_url)
         if not result_text:
             return None
 
@@ -146,7 +134,7 @@ class BaseParser(object):
 
         main_frame_element = next(iter(parsed_post.select('iframe#mainFrame')), None)
         if main_frame_element is None:
-            parse_logger.debug(f'해당 Naver#{self.target_id}에 main_frame_element을 발견하지 못했습니다.')
+            parse_logger.debug(f'해당 Naver blog에서 main_frame_element을 발견하지 못했습니다.')
             return None
 
         main_frame_url = "http://blog.naver.com" + main_frame_element.get('src')
@@ -156,17 +144,17 @@ class BaseParser(object):
 
         post_1_div_element = next(iter(parsed_main_frame.select('div#post_1')), None)
         if post_1_div_element is None:
-            parse_logger.debug(f'해당 Naver#{self.target_id}에 div#post_1을 발견하지 못했습니다.')
+            parse_logger.debug(f'해당 Naver blog에서 div#post_1을 발견하지 못했습니다.')
             return None
 
         post_editor_ver = post_1_div_element.get('data-post-editor-version')
         if post_editor_ver is None:
-            parse_logger.debug(f'해당 Naver#{self.target_id}는 지원하지 않는 버전의 에디터를 사용 중...')
+            parse_logger.debug(f'해당 Naver blog는서 지원하지 않는 버전의 에디터를 사용 중...')
             return None
 
         components_html = parsed_main_frame.select('div.se-component')
         if not components_html:
-            parse_logger.debug(f'해당 Naver#{self.target_id}에 div.se-component를 찾을 수 없습니다.')
+            parse_logger.debug(f'해당 Naver blog에서 div.se-component를 찾을 수 없습니다.')
             return None
 
         image_urls = []
@@ -189,7 +177,7 @@ class BaseParser(object):
         # 하나도 없으면 탈락
         if len(image_urls) == 0:
             parse_logger.debug(
-                f'해당 Naver#{self.target_id}에 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
+                f'해당 Naver blog에서 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
             return None
 
         # 하나라도 있으면, 첫번째 것만 반환
@@ -341,53 +329,53 @@ def _get_thumbnail(entry):
         return None
 
 
-class TistoryParser(BaseParser):
-    def __init__(self, target_id):
-        super().__init__(target_id)
-        self._url = f"https://{self.target_id}.tistory.com/rss"
+# class TistoryParser(RssParser):
+#     def __init__(self, target_id):
+#         super().__init__(target_id)
+#         self._url = f"https://{self.target_id}.tistory.com/rss"
+#
+#
+# class NaverParser(RssParser):
+#     def __init__(self, target_id):
+#         super().__init__(target_id)
+#         self._url = f"https://rss.blog.naver.com/{self.target_id}.xml"
+#
+#
+# # youtube_settings = dict(
+# #     # channel_id= "UChZt76JR2Fed1EQ_Ql2W_cw",
+# #     playlist_id="PLjOVTdDf5WwKcFSteiDyPA09toLYZcD1p",
+# # )
+#
+#
+# def _build_youtube_url(target_id):
+#     # 조합: https://github.com/Zaltu/youtube-rss-email/blob/master/BetterYoutube/youtube_utils.py
+#
+#     BASE_URL = 'https://www.youtube.com/feeds/videos.xml?'
+#
+#     if target_id.startswith("UC"):
+#         return BASE_URL + '&' + 'channel_id' + '=' + target_id
+#     elif target_id.startswith("PL"):
+#         return BASE_URL + '&' + 'playlist_id' + '=' + target_id
+#     else:
+#         raise ValueError(f'UC 또는 PL로 시작해야합니다. Unvalid target_id: {target_id}')
+#
+#
+# class YoutubeParser(RssParser):
+#     def __init__(self, target_id):
+#         super().__init__(target_id)
+#         self._url = _build_youtube_url(target_id)
 
 
-class NaverParser(BaseParser):
-    def __init__(self, target_id):
-        super().__init__(target_id)
-        self._url = f"https://rss.blog.naver.com/{self.target_id}.xml"
-
-
-# youtube_settings = dict(
-#     # channel_id= "UChZt76JR2Fed1EQ_Ql2W_cw",
-#     playlist_id="PLjOVTdDf5WwKcFSteiDyPA09toLYZcD1p",
-# )
-
-
-def _build_youtube_url(target_id):
-    # 조합: https://github.com/Zaltu/youtube-rss-email/blob/master/BetterYoutube/youtube_utils.py
-
-    BASE_URL = 'https://www.youtube.com/feeds/videos.xml?'
-
-    if target_id.startswith("UC"):
-        return BASE_URL + '&' + 'channel_id' + '=' + target_id
-    elif target_id.startswith("PL"):
-        return BASE_URL + '&' + 'playlist_id' + '=' + target_id
-    else:
-        raise ValueError(f'UC 또는 PL로 시작해야합니다. Unvalid target_id: {target_id}')
-
-
-class YoutubeParser(BaseParser):
-    def __init__(self, target_id):
-        super().__init__(target_id)
-        self._url = _build_youtube_url(target_id)
-
-
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # tistory_parser = TistoryParser('nittaku')
     # tistory_parser.parse()
     # for feed in tistory_parser.parse():
     #     print(feed)
 
-    naver_parser = NaverParser('is2js')
-    # naver_parser.parse()
-    for feed in naver_parser.parse():
-        print(feed)
+    # naver_parser = NaverParser('is2js')
+    # # naver_parser.parse()
+    # for feed in naver_parser.parse():
+    #     print(feed)
 
     # youtube_parser = YoutubeParser('UC-lgoofOVXSoOdRf5Ui9TWw') # 쌍보네TV
     # youtube_parser.parse()
