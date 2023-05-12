@@ -1,16 +1,18 @@
-from .targets import *
-from .urls import *
+from targets import *
+from urls import *
 
 if __name__ == '__main__':
     from pprint import pprint
-    ...
-    # print(Tistory('nittaku')._urls)
-    # print(Naver('is2js')._urls)
-    # print(Youtube('UChZt76JR2Fed1EQ_Ql2W_cw')._urls)
 
-    tistory = Tistory('nittaku')
+    # Youtube or URLSource들은 category 미반영
+    youtube = Youtube('UChZt76JR2Fed1EQ_Ql2W_cw')
+    pprint(youtube.fetch_feeds())
+    # blog의 경우 category 반영 by tuple
+
+    tistory = Tistory(('nittaku', 'pythonic practice'))
     pprint(tistory.fetch_feeds())
-    # naver = Naver('is2js')
+
+    # naver = Naver(('studd', '질염'))
     # pprint(naver.fetch_feeds())
     # [
     #  {
