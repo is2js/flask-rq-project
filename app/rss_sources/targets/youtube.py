@@ -1,4 +1,3 @@
-# from ..base_source import TargetSource
 from app.rss_sources.base_source import TargetSource
 
 

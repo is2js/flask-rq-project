@@ -5,7 +5,7 @@ import feedparser
 import pytz
 import requests
 from bs4 import BeautifulSoup
-from opengraph_py3 import OpenGraph
+
 
 from .utils import requests_url
 from app.utils.loggers import parse_logger
@@ -60,6 +60,13 @@ class RssParser(object):
             # print('==============')
             # 1개씩 for문내부에서 만든 dict를 yield하여 부모에게 방출
             data = dict()
+
+            # 여러 target를 가질 때 prefix용 (유튜브)  ex> 쌍보네TV xxx  조재성 xxx
+            # - blog는 cls의 NAME(source_name)을 표기 ex> 티스토리 xxx, 네이버 xxx
+            data['source_title'] = source.get('title', None)
+            # 여러 target의 link 버튼용 (유튜브) -> 구독하기
+            data['source_link'] = source.get('link', None)
+
             # url이 uniquekey라서 id로 삽입할 예정인데, id가 있다면 id로 넣고 없으면 url로 넣자
             # if 'id' in entry:
             #     data['id'] = entry['id']
@@ -75,12 +82,11 @@ class RssParser(object):
             # print(f'제목: {_get_text_title(entry.get("title"))}')
             data['title'] = _get_text_title(entry.get("title"))
 
-            # if thumbnail:
-            #     thumb_count += 1
-            # print(f'thumbnail : {thumbnail}')
-            thumbnail = _get_thumbnail(entry) or self._get_og_image_url() or \
-                        self._get_naver_post_image_url(entry.get("link"))
-            data['thumbnail_url'] = thumbnail
+
+            # thumbnail = _get_thumbnail(entry) or self._get_og_image_url() or \
+            #             self._get_naver_post_image_url(entry.get("link"))
+            # data['thumbnail_url'] = thumbnail
+            data['thumbnail_url'] = _get_thumbnail(entry)
 
             # print(f'내용: {_get_text_body(entry)}')
             data['body'] = _get_text_body(entry)
@@ -112,76 +118,6 @@ class RssParser(object):
 
         # print("thumb_count", thumb_count)
         # return feed
-
-    def _get_og_image_url(self):
-        if self._og_image_url:
-            return self._og_image_url
-
-        og = OpenGraph(self._source_url, features='html.parser')
-        # print(og, type(og))
-        if not og.is_valid():
-            return None
-
-        self._og_image_url = og.get('image', None)
-        return self._og_image_url
-
-    def _get_naver_post_image_url(self, post_url, first_image=True):
-        result_text = requests_url(post_url)
-        if not result_text:
-            return None
-
-        parsed_post = BeautifulSoup(result_text, features="html.parser")
-
-        main_frame_element = next(iter(parsed_post.select('iframe#mainFrame')), None)
-        if main_frame_element is None:
-            parse_logger.debug(f'해당 Naver blog에서 main_frame_element을 발견하지 못했습니다.')
-            return None
-
-        main_frame_url = "http://blog.naver.com" + main_frame_element.get('src')
-
-        main_frame_html = requests.get(main_frame_url).text
-        parsed_main_frame = BeautifulSoup(main_frame_html, features="html.parser")
-
-        post_1_div_element = next(iter(parsed_main_frame.select('div#post_1')), None)
-        if post_1_div_element is None:
-            parse_logger.debug(f'해당 Naver blog에서 div#post_1을 발견하지 못했습니다.')
-            return None
-
-        post_editor_ver = post_1_div_element.get('data-post-editor-version')
-        if post_editor_ver is None:
-            parse_logger.debug(f'해당 Naver blog는서 지원하지 않는 버전의 에디터를 사용 중...')
-            return None
-
-        components_html = parsed_main_frame.select('div.se-component')
-        if not components_html:
-            parse_logger.debug(f'해당 Naver blog에서 div.se-component를 찾을 수 없습니다.')
-            return None
-
-        image_urls = []
-        for i, component_html in enumerate(components_html):
-            if i == 0:
-                # 처음에는 무조건 헤더부분의 다큐먼트 타이틀이 나와 pass한다
-                continue
-
-            component_string = str(component_html)
-            # 이미지 컴포넌트가 아니면 탈락
-            if "se-component se-image" not in component_string:
-                continue
-
-            for img_tag in component_html.select('img'):
-                img_src = img_tag.get('data-lazy-src', None)
-                if img_src is None:
-                    continue
-                image_urls.append(img_src)
-
-        # 하나도 없으면 탈락
-        if len(image_urls) == 0:
-            parse_logger.debug(
-                f'해당 Naver blog에서 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
-            return None
-
-        # 하나라도 있으면, 첫번째 것만 반환
-        return image_urls[0] if first_image else image_urls
 
 
 def _get_category(tags):

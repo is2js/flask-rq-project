@@ -1,5 +1,7 @@
 from pprint import pprint
 
+from opengraph_py3 import OpenGraph
+
 from .parser import RssParser
 from .utils import requests_url
 from app.utils import parse_logger
@@ -35,9 +37,7 @@ class BaseSource:
 
     @staticmethod
     def _is_category(feed, category):
-        if feed['category'] != category:
-            return None
-        return feed
+        return feed['category'] == category
 
     def fetch_feeds(self):
 
@@ -55,19 +55,50 @@ class BaseSource:
             # [SUCCESS] 요청 성공시 parse(generate)로 feed dict 1개씩 받아 처리하기
             feeds = []
             for feed in self.parser.parse(result_text):
-                # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                feed['source_name'] = self.NAME
-                feed['source_url'] = self.URL
-
                 # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
                 if category and not self._is_category(feed, category):
                     continue
 
+                # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
+                #  - html에 표시할 때 prefix로 쓸 듯?!
+                feed['source_name'] = self.NAME
+                feed['source_url'] = self.URL
+
+                # [변형/추출] cls별 재정의한 map 적용
+                #  1) Tistory + Naver: thumbnail_url 추가 추출 등
+                feed = self.map(feed)
+
                 feeds.append(feed)
+
 
             total_feeds.extend(feeds)
 
+        # # Sorting
+        # total_feeds = sorted(total_feeds, key=lambda f: f['published'], reverse=True)
+        #
+        # # Truncating
+        # # total_feeds = total_feeds[:5]
+        # del total_feeds[5:]
+
+        ## 1source 여러 url에서 sorting/truncating할게 아니라
+        ## 여러 source의 fetch_feeds들 합한 뒤 처리해야한다.
+
         return total_feeds
+
+    def map(self, feed):
+        return feed
+
+    @staticmethod
+    def _get_og_image_url(current_url):
+        # if self._og_image_url:
+        #     return self._og_image_url
+
+        og = OpenGraph(current_url, features='html.parser')
+        if not og.is_valid():
+            return None
+
+        # self._og_image_url = og.get('image', None)
+        return og.get('image', None)
 
 
 class URLSource(BaseSource):
