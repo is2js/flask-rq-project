@@ -93,13 +93,14 @@ class RssParser(object):
 
             # 날짜: 2019-02-21 02:18:24
             # 1) published_parsed + mktime + fromtimestamp + pytz
-            # utc_published = time_struct_to_utc_datetime(entry.get("published_parsed"))
+            utc_published = time_struct_to_utc_datetime(entry.get("published_parsed"))
 
             # 2) published + datetutil + pytz
-            utc_published = parser.parse(entry.get('published'))
+            # utc_published = parser.parse(entry.get('published'))
+            #### => 쉬운방법으로 할 경우, timezone이 안들어간 utc_published가 생성될 수 있다.
+
             # print("published + dateutil.parser", utc_published, type(utc_published))
             data['published'] = utc_published
-
             # 출력용
             kst_published = utc_to_local(utc_published)
             # print(f'날짜: {kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}')

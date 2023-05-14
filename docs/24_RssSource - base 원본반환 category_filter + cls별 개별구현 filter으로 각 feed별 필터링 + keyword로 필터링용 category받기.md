@@ -82,7 +82,7 @@
             self._url_with_categories = self._generate_urls(self.check_category(self.check_type(target_ids)))
     
         def _generate_urls(self, target_ids):
-            raise NotImplemented
+            raise NotImplementedError
     ```
    
 
@@ -112,7 +112,7 @@
             self._url_with_categories = self._generate_urls(self.check_category(self.check_type(target_ids)))
     
         # def _generate_urls(self, target_ids):
-        #     raise NotImplemented
+        #     raise NotImplementedError
     
         def _generate_urls(self, target_id_and_categories):
             # return list(map(lambda x: (f"https://{x[0]}.tistory.com/rss", x[1]), target_id_and_categories))

@@ -1,11 +1,10 @@
-from pprint import pprint
-
 from opengraph_py3 import OpenGraph
 
+from app.rss_sources.config import SourceConfig
 from .parser import RssParser
+from .templates import TITLE_TEMPLATE, TABLE_START, TABLE_END
 from .utils import requests_url
 from app.utils import parse_logger
-
 
 class BaseSource:
     NAME = ''  # source 이름
@@ -35,10 +34,6 @@ class BaseSource:
             urls_with_category.append(element)
         return urls_with_category
 
-    @staticmethod
-    def _is_category(feed, category):
-        return feed['category'] == category
-
     def fetch_feeds(self):
 
         total_feeds = []
@@ -56,7 +51,8 @@ class BaseSource:
             feeds = []
             for feed in self.parser.parse(result_text):
                 # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
-                if category and not self._is_category(feed, category):
+                # - URLSource는 제외
+                if issubclass(self.__class__, TargetSource) and category and not self._is_category(feed, category):
                     continue
 
                 # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
@@ -70,35 +66,28 @@ class BaseSource:
 
                 feeds.append(feed)
 
-
             total_feeds.extend(feeds)
 
-        # # Sorting
-        # total_feeds = sorted(total_feeds, key=lambda f: f['published'], reverse=True)
-        #
-        # # Truncating
-        # # total_feeds = total_feeds[:5]
-        # del total_feeds[5:]
-
-        ## 1source 여러 url에서 sorting/truncating할게 아니라
-        ## 여러 source의 fetch_feeds들 합한 뒤 처리해야한다.
-
         return total_feeds
+
+    @staticmethod
+    def _is_category(feed, category):
+        return feed['category'] == category
 
     def map(self, feed):
         return feed
 
     @staticmethod
     def _get_og_image_url(current_url):
-        # if self._og_image_url:
-        #     return self._og_image_url
 
         og = OpenGraph(current_url, features='html.parser')
         if not og.is_valid():
             return None
 
-        # self._og_image_url = og.get('image', None)
         return og.get('image', None)
+
+
+
 
 
 class URLSource(BaseSource):
@@ -110,25 +99,29 @@ class URLSource(BaseSource):
 class TargetSource(BaseSource):
     TARGET_URL = ''
 
-    def __init__(self, target_ids):
+    def __init__(self, target_id_with_categories):
         super().__init__()
-        self._url_with_categories = self._generate_urls(self.check_category(self.check_type(target_ids)))
+        self.target_id_with_categories = self.check_category(self.check_type(target_id_with_categories))
+        self._url_with_categories = self._generate_urls(self.target_id_with_categories)
 
     # def _generate_urls(self, target_ids):
-    #     raise NotImplemented
+    #     raise NotImplementedError
 
     def _generate_urls(self, target_id_and_categories):
         """
         :param target_id_and_categories: ('nittaku', 'IT게시판')
         :return:
         """
-        # return list(map(lambda x: (f"https://{x[0]}.tistory.com/rss", x[1]), target_id_and_categories))
-        return list(map(
-            lambda id_and_category: (
-                self._get_target_url_from_id(id_and_category[0]), id_and_category[1]),
-            target_id_and_categories
-        ))
+
+        target_urls = []
+        for target_id, category in target_id_and_categories:
+            if not target_id:
+                # continue
+                raise ValueError(f'{self.__class__.__name__}() 생성시 target_id가 없을 수 없습니다: {target_id}')
+
+            target_url = self._get_target_url_from_id(target_id)
+            target_urls.append((target_url, category))
+        return target_urls
 
     def _get_target_url_from_id(self, target_id):
         return self.TARGET_URL.format(target_id)
-

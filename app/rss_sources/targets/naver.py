@@ -28,7 +28,7 @@ class Naver(TargetSource):
 
         main_frame_element = next(iter(parsed_post.select('iframe#mainFrame')), None)
         if main_frame_element is None:
-            parse_logger.debug(f'해당 Naver blog에서 main_frame_element을 발견하지 못했습니다.')
+            # parse_logger.debug(f'해당 Naver blog에서 main_frame_element을 발견하지 못했습니다.')
             return None
 
         main_frame_url = "http://blog.naver.com" + main_frame_element.get('src')
@@ -39,17 +39,17 @@ class Naver(TargetSource):
 
         post_1_div_element = next(iter(parsed_main_frame.select('div#post_1')), None)
         if post_1_div_element is None:
-            parse_logger.debug(f'해당 Naver blog에서 div#post_1을 발견하지 못했습니다.')
+            # parse_logger.debug(f'해당 Naver blog에서 div#post_1을 발견하지 못했습니다.')
             return None
 
         post_editor_ver = post_1_div_element.get('data-post-editor-version')
         if post_editor_ver is None:
-            parse_logger.debug(f'해당 Naver blog는서 지원하지 않는 버전의 에디터를 사용 중...')
+            # parse_logger.debug(f'해당 Naver blog는서 지원하지 않는 버전의 에디터를 사용 중...')
             return None
 
         components_html = parsed_main_frame.select('div.se-component')
         if not components_html:
-            parse_logger.debug(f'해당 Naver blog에서 div.se-component를 찾을 수 없습니다.')
+            # parse_logger.debug(f'해당 Naver blog에서 div.se-component를 찾을 수 없습니다.')
             return None
 
         image_urls = []
@@ -71,8 +71,8 @@ class Naver(TargetSource):
 
         # 하나도 없으면 탈락
         if len(image_urls) == 0:
-            parse_logger.debug(
-                f'해당 Naver blog에서 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
+            # parse_logger.debug(
+                # f'해당 Naver blog에서 se-component se-image를 가진 component 속 img태그에 data-lazy-src를 발견하지 못했습니다.')
             return None
 
         # 하나라도 있으면, 첫번째 것만 반환

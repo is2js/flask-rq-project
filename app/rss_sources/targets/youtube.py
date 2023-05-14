@@ -1,9 +1,12 @@
 from app.rss_sources.base_source import TargetSource
+# from app.rss_sources.templates import TITLE_TEMPLATE, YOUTUBE_CUSTOM_TEMPLATE, TABLE_START, \
+#     YOUTUBE_FEED_TEMPLATE, TABLE_END
 
 
 class Youtube(TargetSource):
     NAME = '유튜브'
     URL = 'https://www.youtube.com/'
+
     # TARGET_URL = 'https://{}.tistory.com/rss'
 
     def _get_target_url_from_id(self, target_id):
@@ -18,4 +21,31 @@ class Youtube(TargetSource):
             return BASE_URL + '&' + 'playlist_id' + '=' + target_id
         else:
             raise ValueError(f'UC 또는 PL로 시작해야합니다. Unvalid target_id: {target_id}')
+
+
+    # def set_custom(self):
+    #     custom_result = ''
+    #     # 채널명(UC~)을 1개만 입력한 경우 구독하기 버튼
+    #     if len(self.target_id_with_categories) == 1 and self.target_id_with_categories[0][0].startswith('UC'):
+    #         custom_button = YOUTUBE_CUSTOM_TEMPLATE.format(self.target_id_with_categories[0][0])
+    #         custom_result += custom_button
+    #
+    #     return custom_result
+    #
+    # def set_feed_template(self, feed_template, feeds):
+    #     feed_template_result = ''
+    #     for feed in feeds:
+    #         feed_text = feed_template.format(
+    #             feed['url'],
+    #             feed['thumbnail_url'],
+    #             feed['url'],
+    #             f'<span style="color:black">{feed["source_title"]}) </span>' if len(
+    #                 self.target_id_with_categories) > 1 else '',
+    #             feed['title'],
+    #             feed['published_string']
+    #         )
+    #         feed_template_result += feed_text
+    #
+    #     return feed_template_result
+
 

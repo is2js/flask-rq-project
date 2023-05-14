@@ -62,7 +62,7 @@
             </button>
             <a id="{{ task.id }}-reserve-cancel" href="{{ url_for('main.cancel_reserve', task_id=task.id) }}"
                class="text-danger font-weight-bold"
-               style="visibility: visible">
+               style="visibility: visible;>
                 <small>
                     <span id="{{ task.id }}-remain">{{task.reserved_at | remain_from_now }}</span>
                     (예약 취소)
