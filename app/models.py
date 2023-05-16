@@ -9,6 +9,8 @@ import rq
 from rq.command import send_stop_job_command
 from sqlalchemy import types, desc, asc
 from sqlalchemy.ext import mutable
+from sqlalchemy.orm import declared_attr
+
 from . import session, Base
 from .extentions import r
 import sqlalchemy as db

@@ -231,7 +231,7 @@
                     feed['url'],
                     feed['thumbnail_url'],
                     feed['url'],
-                    f'<span style="color:black">{feed["source_name"]}) </span>' if len(
+                    f'<span style="color:black">{feed["source_category_name"]}) </span>' if len(
                         self.target_id_with_categories) > 1 else '',
                     feed['title'],
                     feed['published_string']

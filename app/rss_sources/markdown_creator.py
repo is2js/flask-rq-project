@@ -88,7 +88,7 @@ class YoutubeMarkdown(Markdown):
                 feed['url'],
                 feed['thumbnail_url'],
                 feed['url'],
-                f'<span style="color:black">{feed["source_name"]}) </span>' if prefix else '',
+                f'<span style="color:black">{feed["source_category_name"]}) </span>' if prefix else '',
                 feed['title'],
                 feed['published_string']
             )

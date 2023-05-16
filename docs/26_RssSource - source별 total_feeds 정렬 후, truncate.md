@@ -80,7 +80,7 @@ if __name__ == '__main__':
             feed['url'],
             feed['thumbnail_url'],
             feed['url'],
-            f'<span style="color:black">{feed["source_name"]}) </span>' if len(target_ids) > 1 else '',
+            f'<span style="color:black">{feed["source_category_name"]}) </span>' if len(target_ids) > 1 else '',
             feed['title'],
             feed['published_string']
         )
