@@ -26,8 +26,10 @@ class Markdown:
 
         feeds = self.sort_and_truncate_feeds(feeds, display_numbers=display_numbers)
 
-        updated_at = pytz.timezone('Asia/Seoul').localize(datetime.now())
-        markdown_text += TITLE_TEMPLATE.format(title_level, title, updated_at.strftime("%Y-%m-%d %H:%M:%S"))
+        # kst로 바로 localize하니까, strftime이 안찍히는 듯
+        utc_updated_at = pytz.utc.localize(datetime.now())
+        kst_updated_at = utc_updated_at.astimezone(pytz.timezone('Asia/Seoul'))
+        markdown_text += TITLE_TEMPLATE.format(title_level, title, kst_updated_at.strftime("%Y-%m-%d %H:%M:%S"))
         markdown_text += self.set_custom()
         markdown_text += TABLE_START
         markdown_text += self.set_feed_template(feed_template, feeds, prefix=self.is_many_sources_or_targets())
