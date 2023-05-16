@@ -15,7 +15,7 @@
 ### test로 feed들을 마크다운으로 작성하기
 - **여러 target_id를 가질 경우**
   - youtube는 prefix로 `entry`데이터를 생성시 블로그 url(link) `source_title`을 받아와서 처리하게 했다.
-  - blog는 prefix로 `Source cls의 NAME`인 `source_name`를 받아와서 달게 했다.
+  - blog는 prefix로 `Source cls의 NAME`인 `source_category_name`를 받아와서 달게 했다.
 ```python
 # app/rss_sources/__init__.py
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
             feed['url'],
             feed['thumbnail_url'],
             feed['url'],
-            f'<span style="color:black">{feed["source_title"]}) </span>' if len(target_ids) > 1 else '',
+            f'<span style="color:black">{feed["source_name"]}) </span>' if len(target_ids) > 1 else '',
             feed['title'],
             feed['published_string']
         )
@@ -147,7 +147,7 @@ if __name__ == '__main__':
             feed['url'],
             feed['thumbnail_url'],
             feed['url'],
-            f'<span style="color:darkgrey">{feed["source_name"]} </span>',
+            f'<span style="color:darkgrey">{feed["source_category_name"]} </span>',
             feed['title'],
             feed['published_string']
         )

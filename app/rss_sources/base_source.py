@@ -57,8 +57,8 @@ class BaseSource:
 
                 # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
                 #  - html에 표시할 때 prefix로 쓸 듯?!
-                feed['source_name'] = self.NAME
-                feed['source_url'] = self.URL
+                feed['source_category_name'] = self.NAME
+                feed['source_category_url'] = self.URL
 
                 # [변형/추출] cls별 재정의한 map 적용
                 #  1) Tistory + Naver: thumbnail_url 추가 추출 등

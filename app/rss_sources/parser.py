@@ -62,10 +62,10 @@ class RssParser(object):
             data = dict()
 
             # 여러 target를 가질 때 prefix용 (유튜브)  ex> 쌍보네TV xxx  조재성 xxx
-            # - blog는 cls의 NAME(source_name)을 표기 ex> 티스토리 xxx, 네이버 xxx
-            data['source_title'] = source.get('title', None)
+            # - blog는 cls의 NAME(source_category_name)을 표기 ex> 티스토리 xxx, 네이버 xxx
+            data['source_name'] = source.get('title', None)
             # 여러 target의 link 버튼용 (유튜브) -> 구독하기
-            data['source_link'] = source.get('link', None)
+            data['source_url'] = source.get('link', None)
 
             # url이 uniquekey라서 id로 삽입할 예정인데, id가 있다면 id로 넣고 없으면 url로 넣자
             # if 'id' in entry:

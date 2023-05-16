@@ -47,8 +47,8 @@
                         continue
                         
                     # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                    feed['source_name'] = self.NAME
-                    feed['source_url'] = self.URL
+                    feed['source_category_name'] = self.NAME
+                    feed['source_category_url'] = self.URL
                     
                     # [변형/추출]
                     feed = self.map(feed)
@@ -233,8 +233,8 @@ async def _update_text(self, db, queue, text, category):
     for x in self.parser.parse(text):
         if category is not None:
             x['category'] = category
-        x['source_name'] = self.name
-        x['source_url'] = self.url
+        x['source_category_name'] = self.name
+        x['source_category_url'] = self.url
         x = self.map(x)
         if x is None:
             continue

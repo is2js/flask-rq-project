@@ -88,7 +88,7 @@ class YoutubeMarkdown(Markdown):
                 feed['url'],
                 feed['thumbnail_url'],
                 feed['url'],
-                f'<span style="color:black">{feed["source_title"]}) </span>' if prefix else '',
+                f'<span style="color:black">{feed["source_name"]}) </span>' if prefix else '',
                 feed['title'],
                 feed['published_string']
             )
@@ -122,7 +122,7 @@ class BlogMarkdown(Markdown):
                 feed['url'],
                 feed['thumbnail_url'],
                 feed['url'],
-                f'<span style="color:black">{feed["source_name"]}) </span>' if prefix else '',
+                f'<span style="color:black">{feed["source_category_name"]}) </span>' if prefix else '',
                 feed['title'],
                 feed['published_string']
             )
@@ -143,8 +143,8 @@ class URLMarkdown(Markdown):
         feed_template_result = ''
         for feed in feeds:
             feed_text = feed_template.format(
-                feed['source_url'],
-                feed['source_name'],
+                feed['source_category_url'],
+                feed['source_category_name'],
                 f"</br><small>{feed['category']}</small>" if feed['category'] else '',
                 feed['url'],
                 feed['title'],

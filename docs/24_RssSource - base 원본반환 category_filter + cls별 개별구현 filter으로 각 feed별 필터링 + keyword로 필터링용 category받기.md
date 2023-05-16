@@ -27,8 +27,8 @@
                 feeds = []
                 for feed in self.parser.parse(result_text):
                     # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                    feed['source_name'] = self.NAME
-                    feed['source_url'] = self.URL
+                    feed['source_category_name'] = self.NAME
+                    feed['source_category_url'] = self.URL
                     
                     # [카테고리 필터링]
                     feed = self.category_filter(feed)
@@ -197,8 +197,8 @@
             feeds = []
             for feed in self.parser.parse(result_text):
                 # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                feed['source_name'] = self.NAME
-                feed['source_url'] = self.URL
+                feed['source_category_name'] = self.NAME
+                feed['source_category_url'] = self.URL
 
                 # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
                 if category and not self._is_category(feed, category):

@@ -287,8 +287,8 @@ if __name__ == '__main__':
                 # [SUCCESS] 요청 성공시 parse(generate)로 feed dict 1개씩 받아 처리하기
                 for feed in self.parser.parse(result_text):
                     # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                    feed['source_name'] = self.NAME
-                    feed['source_url'] = self.URL
+                    feed['source_category_name'] = self.NAME
+                    feed['source_category_url'] = self.URL
     
                     feeds.append(feed)
     
@@ -307,8 +307,8 @@ if __name__ == '__main__':
         #   'category': '마왕',
         #   'published': datetime.datetime(2023, 5, 10, 18, 33, 11, tzinfo=tzoffset(None, 32400)),
         #   'published_string': '2023년 05월 10일 18시 33분 11초',
-        #   'source_name': '네이버',
-        #   'source_url': 'https://www.naver.com/',
+        #   'source_category_name': '네이버',
+        #   'source_category_url': 'https://www.naver.com/',
         #   'thumbnail_url': None,
         #   'title': 'ddd',
         #   'url': 'https://blog.naver.com/is2js/223098522367'
@@ -353,8 +353,8 @@ if __name__ == '__main__':
                 # [SUCCESS] 요청 성공시 parse(generate)로 feed dict 1개씩 받아 처리하기
                 for feed in self.parser.parse(result_text):
                     # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                    feed['source_name'] = self.NAME
-                    feed['source_url'] = self.URL
+                    feed['source_category_name'] = self.NAME
+                    feed['source_category_url'] = self.URL
     
                     feeds.append(feed)
     
@@ -398,8 +398,8 @@ if __name__ == '__main__':
         #   'category': None,
         #   'published': datetime.datetime(2023, 5, 10, 16, 29, 45),
         #   'published_string': '2023년 05월 10일 16시 29분 45초',
-        #   'source_name': '민족의학신문',
-        #   'source_url': 'https://www.mjmedi.com//',
+        #   'source_category_name': '민족의학신문',
+        #   'source_category_url': 'https://www.mjmedi.com//',
         #   'thumbnail_url': None,
         #   'title': '심평원 서울지원, 걷기 활동 나눔행사 실시',
         #   'url': 'http://www.mjmedi.com/news/articleView.html?idxno=56571'},
