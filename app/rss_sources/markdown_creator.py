@@ -4,7 +4,8 @@ from app.rss_sources.config import SourceConfig
 from app.rss_sources.templates import TITLE_TEMPLATE, TABLE_START, TABLE_END, YOUTUBE_CUSTOM_TEMPLATE
 from app.utils import parse_logger
 
-from targets import *
+from blogs import *
+from youtube import *
 from urls import *
 
 
