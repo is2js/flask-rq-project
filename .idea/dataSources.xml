@@ -16,5 +16,12 @@
         </library>
       </libraries>
     </data-source>
+    <data-source source="LOCAL" name="db driver - db.sqlite1" uuid="27d73219-3ca2-4fd0-9d45-e18d928c7679">
+      <driver-ref>98af4a23-d20f-4663-8570-fe4f3fd90bc6</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\cho_desktop\PycharmProjects\rq\app\rss_sources\db.sqlite</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>

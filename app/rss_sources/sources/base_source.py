@@ -1,10 +1,7 @@
-from opengraph_py3 import OpenGraph
-
-from app.rss_sources.config import SourceConfig
-from .parser import RssParser
-from .templates import TITLE_TEMPLATE, TABLE_START, TABLE_END
-from .utils import requests_url
 from app.utils import parse_logger
+from app.rss_sources.parser import RssParser
+from app.rss_sources.utils import requests_url
+
 
 class BaseSource:
     NAME = ''  # source 이름
@@ -16,8 +13,6 @@ class BaseSource:
 
     @staticmethod
     def check_type(target_ids_or_urls):
-        # 바깥 괄호는 list여야한다. (안쪽괄호가 tuple)
-        # if not isinstance(target_ids_or_urls, (list, tuple, set)):
         if not isinstance(target_ids_or_urls, list):
             target_ids_or_urls = [target_ids_or_urls]
 
@@ -28,7 +23,6 @@ class BaseSource:
         urls_with_category = []
         for element in urls_or_url_with_categories:
             if not isinstance(element, tuple):
-                # category가 같이 안들어왔으면 None으로 채워준다.
                 element = (element, None)
 
             urls_with_category.append(element)
@@ -38,7 +32,6 @@ class BaseSource:
 
         total_feeds = []
 
-        # for url in self._urls:
         for url, category in self._url_with_categories:
             result_text = requests_url(url)
 
@@ -50,19 +43,24 @@ class BaseSource:
             # [SUCCESS] 요청 성공시 parse(generate)로 feed dict 1개씩 받아 처리하기
             feeds = []
             for feed in self.parser.parse(result_text):
-                # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
+                #### 필터링 -> 취소
+                #### get_feed시 필터링만category를 사용하고, fetch시에는 다 가져온다
+                # [블로그 입력 카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
                 # - URLSource는 제외
-                if issubclass(self.__class__, TargetSource) and category and not self._is_category(feed, category):
-                    continue
 
-                # [추가삽입] 부모인 source정보 삽입 -> DB적용시 source의 id로 대체?!
-                #  - html에 표시할 때 prefix로 쓸 듯?!
-                feed['source_category_name'] = self.NAME
-                feed['source_category_url'] = self.URL
+                # if issubclass(self.__class__, TargetSource) and category and not self._is_category(feed, category):
+                #     continue
+
 
                 # [변형/추출] cls별 재정의한 map 적용
                 #  1) Tistory + Naver: thumbnail_url 추가 추출 등
                 feed = self.map(feed)
+
+                feed['source'].update(
+                    name=self.NAME,
+                    url=self.URL,
+                    # category=category, # source에는 필터링용 category를 입력하지 않는다.
+                )
 
                 feeds.append(feed)
 
@@ -77,17 +75,14 @@ class BaseSource:
     def map(self, feed):
         return feed
 
-    @staticmethod
-    def _get_og_image_url(current_url):
-
-        og = OpenGraph(current_url, features='html.parser')
-        if not og.is_valid():
-            return None
-
-        return og.get('image', None)
-
-
-
+    # @staticmethod
+    # def _get_og_image_url(current_url):
+    #
+    #     og = OpenGraph(current_url, features='html.parser')
+    #     if not og.is_valid():
+    #         return None
+    #
+    #     return og.get('image', None)
 
 
 class URLSource(BaseSource):
@@ -103,9 +98,6 @@ class TargetSource(BaseSource):
         super().__init__()
         self.target_id_with_categories = self.check_category(self.check_type(target_id_with_categories))
         self._url_with_categories = self._generate_urls(self.target_id_with_categories)
-
-    # def _generate_urls(self, target_ids):
-    #     raise NotImplementedError
 
     def _generate_urls(self, target_id_and_categories):
         """

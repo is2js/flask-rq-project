@@ -17,7 +17,7 @@ TABLE_END = '''\
 
 YOUTUBE_CUSTOM_TEMPLATE = '''
 <div align="center">
-    <a href="https://www.youtube.com/channel/{}?sub_confirmation=1"><img src="https://img.shields.io/badge/-구독하기-red?style=flat&logo=youtube&logoColor=white" height=35px/></a>
+    <a href="https://www.youtube.com/channel/{}?sub_confirmation=1"><img src="https://img.shields.io/badge/-구독하기-red?style=flat&logo=youtube&logoColor=white" height=25px/></a>
 </div>
 '''
 
@@ -29,10 +29,12 @@ YOUTUBE_FEED_TEMPLATE = '''\
                 </a>
             </td>
             <td>
-                <a href="{}" style="color:red;text-decoration: none;">
-                    <h5>{}{}</h5>
-                </a>
-                <small style="color:grey">{}</small>
+                <h5>
+                    <a href="{}" style="color:red;text-decoration: none;">
+                        {}
+                    </a>
+                </h5>
+                <sup><sub>{}{}</sub></sup>
             </td>
         </tr>
 '''
@@ -46,10 +48,12 @@ BLOG_FEED_TEMPLATE = '''\
                 </a>
             </td>
             <td>
-                <a href="{}" style="color:teal;text-decoration: none;">
-                    <h5>{}{}</h5>
-                </a>
-                <small style="color:grey">{}</small>
+                <h5>
+                    <a href="{}" style="color:teal;text-decoration: none;">
+                        {}
+                    </a>
+                </h5>
+                <sup><sub>{}{}</sub></sup>
             </td>
         </tr>
 '''
@@ -57,15 +61,20 @@ BLOG_FEED_TEMPLATE = '''\
 URL_FEED_TEMPLATE = '''\
         <tr>
             <td align="center" width="120px" style="padding:0;">
-                <a href="{}" style="color:grey;text-decoration: none;">
-                    {}{}
-                </a>
+                <h6>
+                    <a href="{}" style="color:grey;text-decoration: none;">
+                        {}
+                    </a>
+                </h6>
+                <sup><sub>{}</sub></sup>
             </td>
             <td>
-                <a href="{}" style="color:black;text-decoration: none;">
-                    <h5>{}</h5>
-                </a>
-                <small style="color:grey">{}</small>
+                <h5>
+                    <a href="{}" style="color:black;text-decoration: none;">
+                        {}
+                    </a>
+                </h5>
+                <sup><sub>{}</sub></sup>
             </td>
         </tr>
 '''

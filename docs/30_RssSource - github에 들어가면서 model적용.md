@@ -110,7 +110,8 @@ class BaseSource:
     ```
 3. **SourceCategory는 name으로 find, Source는 url로 find해서 중복인지 확인한다.**
     - SourceCategory는 name이 전체 keyword므로 수정할 필요없다
-    - Source는 url만으로 찾아야한다.
+    - Source는 `target_url`만으로 찾아야한다.
+        - **source의 url은 사용자입력 공통 url이고, target_url이 source안의  여러 target_id에 대한 여러 target_url이며 중복 대상으로 지정된다.**
     - **keyword `get_key=`를 인자로 받아 `주어지는 경우에는 특정칼럼으로만 get을 검색`한다**
     ```python
     class BaseModel(Base):
@@ -126,13 +127,14 @@ class BaseSource:
     
             return instance
     ```
+    - Source는 get의 기준을 `target_url=`로 찾아서, 없으면 생성한다. 같은 youtube라도, target_id -> target_url에 따라 다른 source가 되게 한다
     ```python
     for feed in fetch_feeds:
         feed['source']['source_category'] = SourceCategory.get_or_create(
             name=self.__class__.__name__.replace('Markdown', '')
             )
         # - source dict를 Source객체로 바꿔주기 + url로만 존재여부 판단하기
-        feed['source'] = Source.get_or_create(**feed['source'], get_key='url')
+        feed['source'] = Source.get_or_create(**feed['source'], get_key='target_url')
     ```
 
 4. 중복시 업데이트되는 feed말고 new_feed에 대해서 `add_all`로 bulk_insert한다
@@ -151,7 +153,7 @@ class BaseSource:
                     feed['source']['source_category'] = SourceCategory.get_or_create(
                         name=self.__class__.__name__.replace('Markdown', '')
                     )
-                    feed['source'] = Source.get_or_create(**feed['source'], get_key='url')
+                    feed['source'] = Source.get_or_create(**feed['source'], get_key='target_url')
                     prev_feed = Feed.query.filter_by(url=feed['url']).first()
                     if prev_feed:
                         if feed['title'] != prev_feed.title:
@@ -168,83 +170,3 @@ class BaseSource:
             session.commit()
     ```
 
-
-
-
-
-2. fetch_feeds()에서 feed의 db에서 url로 필터링을 추가한다.
-    - db작업을 모든 feed에서 하지말고 `url중복을 필터링`을 미리 한다.
-```python
-class BaseSource:
-    NAME = ''  # source 이름
-    URL = ''  # source 자체 url (not rss)
-    def fetch_feeds(self):
-
-        total_feeds = []
-        for url, category in self._url_with_categories:
-            result_text = requests_url(url)
-            #...
-            for feed in self.parser.parse(result_text):
-                # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
-                if issubclass(self.__class__, TargetSource) and category and not self._is_category(feed, category):
-                    continue
-
-                # DB1. [url 필터링] with db
-                if Feed.query.filter_by(url=feed['url']).first():
-                    continue
-```
-3. fetch_feeds()의 source_category_xxxx를 Category객체로 만들되 `get_or_create`로 만들거나 가져온다.
-    - get_or_create는 모든 keyword가 아닌 url=에 대해서만 필터링하고 없으면 생성한다
-    ```python
-    class BaseModel(Base):
-        #...
-        @classmethod
-        def get_or_create(cls, **kwargs):
-            instance = cls.query.filter_by(url=kwargs.get('url')).first()
-            if instance is None:
-                instance = cls(**kwargs)
-                instance.save()
-    
-            return instance
-    ```
-    ```python
-    for feed in self.parser.parse(result_text):
-        # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
-        # - URLSource는 제외
-        if issubclass(self.__class__, TargetSource) and category and not self._is_category(feed, category):
-            continue
-        # DB1. [url 필터링] with db
-        if Feed.query.filter_by(url=feed['url']).first():
-            continue
-   
-        category_instance = Category.get_or_create(name=self.NAME, url=self.URL)
-    ```
-   
-
-4. feed속의 `source` dict에 정보를 꺼낸 뒤, `Category객체를 품은 Source객체`로 `feed의 source를 대체`한다
-    - 이 때도, get_or_create한다. 
-    ```python
-    for feed in self.parser.parse(result_text):
-        # [카테고리 필터링] 카테고리가 일치하지 않으면 해당feed dict 넘어가기
-        # - URLSource는 제외
-        if issubclass(self.__class__, TargetSource) and category and not self._is_category(feed, category):
-            continue
-    
-        # DB1. [url 필터링] with db
-        if Feed.query.filter_by(url=feed['url']).first():
-            continue
-        category_instance = Category.get_or_create(name=self.NAME, url=self.URL)
-        feed = self.map(feed)
-        feed['source'] = Source.get_or_create(
-            category=category_instance,
-            name=feed['source'].get('name'),
-            url=feed['source'].get('url')
-        )
-    ```
-
-5. category를 품은 Source를 품은 Feed객체를 만들고, **바로 create하지않고 Feed객체 list를 모은다.**
-    - url필터링으로 이미 새 feed가 되었다.
-    - Feed객체는 `이미 등록된 Category, Source 부모객체들을 품고` 있다.
-       - 등록안된 부모들을 품고 add한다면, unique를 안준 경우 중복데이터를 저장하며, url에 unique를 준다면, Unique에러가난다
-    - **`매번 save하지말고, 필터링된 raw Feed객체를 add_all로 bulk_insert`하자**
-    

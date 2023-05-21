@@ -7,6 +7,7 @@ from .service import SchedulerService
 from .word_counter import count_words
 from .image_uploader import create_image_set
 from .mail_sender import send_async_mail
+from .rss_fetcher import fetch_rss
 
 from app.extentions import queue
 from app.models import Task
@@ -76,19 +77,36 @@ def init_app(app):
             scheduled_time=datetime.now(),
             task_func=print, args=['scheduler work...2'], kwargs={},
             description='test',
-            interval=timedelta(seconds=30),# repeat=5,
+            interval=timedelta(seconds=30),
+            # repeat=5, 횟수
             timeout=timedelta(minutes=10),
         ),
+        # rss_fetch -> cron으로 이동
+        # dict(
+        #     scheduled_time=datetime.now(),
+        #     task_func=fetch_rss, args=[], kwargs={},
+        #     description='fetch_rss',
+        #     interval=timedelta(minutes=5),
+        #     # repeat=5, # 횟수
+        #     timeout=timedelta(minutes=10),
+        # ),
     ]
 
     # FutureWarning: Version 0.22.0+ of crontab will use datetime.utcnow() and
     # datetime.utcfromtimestamp() instead of datetime.now() and datetime.fromtimestamp() as was previous.
     cron_jobs = [
+        # dict(
+        #     cron_string="33 23 * * *",
+        #     task_func=print, args=['cron job 1'], kwargs={},
+        #     description='test',
+        #     timeout=timedelta(minutes=10),
+        # ),
+        # 3시간마다 rss 패치
         dict(
-            cron_string="33 23 * * *",
-            task_func=print, args=['cron job 1'], kwargs={},
-            description='test',
-            timeout=timedelta(minutes=10),
+            cron_string="00 */3 * * *",  # 분|시|(매달)일|월|(매주)요일(1=월요일)
+            task_func=fetch_rss, args=[], kwargs={},
+            description='fetch_ress',
+            timeout=timedelta(minutes=5),
         ),
     ]
 

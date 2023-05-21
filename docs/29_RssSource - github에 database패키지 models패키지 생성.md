@@ -183,35 +183,36 @@
 - 여기서는 category -> source -> feed 순으로 부모삭제시 같이 삭제되도록 한다
 
 1. `source.py`를 만들어서, SourceCategory + Source를 같이 정의한다
+    - **이 때, feed와 달리 source는 사용자입력 name, url이 있고, 타겟에 대한 target_name, target_url이 있는데, `같은 source에서 여러 타겟이 나올 수 잇으므로 target_url에 index와 unique`를 준다**
     ```python
-class SourceCategory(BaseModel):
-    """
-    Youtube, Blog, URL
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Text, nullable=False, unique=True)
-
-    sources = relationship('Source', back_populates='source_category', cascade='all, delete-orphan')
-
-
-class Source(BaseModel):
-    """
-    Youtube - 1,2,3                             => 1,2,3이 쓰임 (target_name, target_url in parser.parse)
-    Blog - (Tistory) 1,2,3, + (Naver) 1,2,3,,   => ()가쓰임 (source_name, source_url in BaseSource.fetch_feeds)
-    URL - 1,2,3                                 => 1,2,3이 쓰임
-    """
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.Text, nullable=False) # 사용자입력 NAME ex> Tistory, Naver, 유튜브, 왓챠
-    url = db.Column(db.Text, nullable=False, index=True, unique=True)
-    category = db.Column(db.Text, nullable=True)
-
-    target_name = db.Column(db.Text, nullable=False) # 타겟 NAME ex> xxx님의 blog, 쌍보네TV
-    target_url = db.Column(db.Text, nullable=False)
-
-    source_category_id = db.Column(db.Integer, db.ForeignKey('sourcecategory.id', ondelete="CASCADE"))
-    source_category = relationship('SourceCategory', foreign_keys=[source_category_id], back_populates='sources', uselist=False)
-
-    feeds = relationship('Feed', back_populates='source', cascade='all, delete-orphan')
+    class SourceCategory(BaseModel):
+        """
+        Youtube, Blog, URL
+        """
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Text, nullable=False, unique=True, index=True)
+    
+        sources = relationship('Source', back_populates='source_category', cascade='all, delete-orphan')
+    
+    
+    class Source(BaseModel):
+        """
+        Youtube - 1,2,3                             => 1,2,3이 쓰임 (target_name, target_url in parser.parse)
+        Blog - (Tistory) 1,2,3, + (Naver) 1,2,3,,   => ()가쓰임 (source_name, source_url in BaseSource.fetch_feeds)
+        URL - 1,2,3                                 => 1,2,3이 쓰임
+        """
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Text, nullable=False) # 사용자입력 NAME ex> Tistory, Naver, 유튜브, 왓챠
+        url = db.Column(db.Text, nullable=False)
+        category = db.Column(db.Text, nullable=True)
+    
+        target_name = db.Column(db.Text, nullable=False) # RSS타겟 NAME ex> xxx님의 blog, 쌍보네TV
+        target_url = db.Column(db.Text, nullable=False, index=True, unique=True)
+    
+        source_category_id = db.Column(db.Integer, db.ForeignKey('sourcecategory.id', ondelete="CASCADE"))
+        source_category = relationship('SourceCategory', foreign_keys=[source_category_id], back_populates='sources', uselist=False)
+    
+        feeds = relationship('Feed', back_populates='source', cascade='all, delete-orphan')
     ```
 
 2. `feed.py`를 만들어서 Feed를 정의한다.

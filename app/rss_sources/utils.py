@@ -7,15 +7,9 @@ headers = {
 }
 
 
-# result_text = requests_url(self.headers, self.target_id, self._url)
-# if not result_text:
-#     return False
-
 def requests_url(url, params=None):
     try:
         response = requests.get(url, headers=headers, params=params, timeout=3)
-        # if response.status_code != 200:
-        #     raise requests.HTTPError
         response.raise_for_status()  # Raises :class:`HTTPError`, if one occurred.
         return response.text
     except requests.exceptions.ReadTimeout:

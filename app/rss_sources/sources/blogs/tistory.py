@@ -1,4 +1,4 @@
-from app.rss_sources.base_source import TargetSource
+from app.rss_sources.sources.base_source import TargetSource
 
 
 class Tistory(TargetSource):
@@ -8,6 +8,6 @@ class Tistory(TargetSource):
 
     def map(self, feed):
         if not feed['thumbnail_url']:
-            feed['thumbnail_url'] = self._get_og_image_url(feed['url'])
+            feed['thumbnail_url'] = "./rss_sources/images/tistory.png" # self._get_og_image_url(feed['url'])
 
         return feed

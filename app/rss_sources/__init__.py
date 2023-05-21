@@ -1,11 +1,10 @@
-import os
-
+from app import Base, engine
 from app.rss_sources.markdown_creator import YoutubeMarkdown, BlogMarkdown, URLMarkdown
-from templates import YOUTUBE_FEED_TEMPLATE, BLOG_FEED_TEMPLATE, URL_FEED_TEMPLATE
+from app.rss_sources.services import YoutubeService, BlogService, URLService
+from .templates import YOUTUBE_FEED_TEMPLATE, BLOG_FEED_TEMPLATE, URL_FEED_TEMPLATE
 from app.utils import parse_logger
 
-from config import SourceConfig
-
+from app.rss_sources.config import SourceConfig
 
 
 def get_youtube_markdown():
@@ -66,23 +65,40 @@ def get_url_markdown():
 
 
 if __name__ == '__main__':
+    Base.metadata.create_all(bind=engine)
 
-    append_markdown = ''
-    append_markdown += get_youtube_markdown()
-    append_markdown += get_blog_markdown()
-    append_markdown += get_url_markdown()
+    youtube_service = YoutubeService()
+    is_updated = youtube_service.fetch_new_feeds()
+    print('youtube_feeds 업데이트 여부 >>> ', is_updated)
+    blog_service = BlogService()
+    is_updated = blog_service.fetch_new_feeds()
+    print('blog_feeds 업데이트 여부 >>> ', is_updated)
+    url_service = URLService()
+    is_updated = url_service.fetch_new_feeds()
+    print('url_feeds 업데이트 여부 >>> ', is_updated)
 
-    if append_markdown:
-        with open('./readme.md', 'w', encoding="UTF-8") as readme:
-            with open('./default.md', 'r', encoding="UTF-8") as default:
-                readme.write(default.read()+'\n')
-            readme.write(append_markdown)
+    youtube_feeds = youtube_service.get_feeds()
+    blog_feeds = blog_service.get_feeds()
+    url_feeds = url_service.get_feeds()
+    print('youtube_feeds >>> ', [f.title for f in youtube_feeds])
+    print('blog_feeds >>> ', [f.title for f in blog_feeds])
+    print('url_feeds >>> ', [f.title for f in url_feeds])
 
-    else:
-        parse_logger.info('default readme에 추가할 내용이 없습니다.')
+    # append_markdown = ''
+    # append_markdown += get_youtube_markdown()
+    # append_markdown += get_blog_markdown()
+    # append_markdown += get_url_markdown()
+    #
+    # if append_markdown:
+    #     with open('./readme.md', 'w', encoding="UTF-8") as readme:
+    #         with open('./default.md', 'r', encoding="UTF-8") as default:
+    #             readme.write(default.read()+'\n')
+    #         readme.write(append_markdown)
+    #
+    # else:
+    #     parse_logger.info('default readme에 추가할 내용이 없습니다.')
 
     # os.close()
-
 
     # blog의 경우 category 반영 by tuple
 

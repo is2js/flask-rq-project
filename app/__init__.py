@@ -37,7 +37,7 @@ def create_app():
     from .extentions import mail
     mail.init_app(app)
 
-    from .models import Task, Notification, Message
+    from .models import Task, Notification, Message, Source, SourceCategory
     Base.metadata.create_all(bind=engine)
 
     # from app import views

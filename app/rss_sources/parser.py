@@ -3,39 +3,19 @@ from time import mktime
 
 import feedparser
 import pytz
-import requests
 from bs4 import BeautifulSoup
 
-
-from .utils import requests_url
-from app.utils.loggers import parse_logger
-
-from dateutil import parser
+from app.rss_sources.utils import parse_logger
 
 
 class RssParser(object):
-    # def __init__(self, target_id):
+
     def __init__(self):
-        # self.target_id = target_id
-        # self._url = None  # 공통 parse함수를 위해, 미리 초기화
-        # self.headers = {
-        #     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'
-        # }
-        # og:image 를 가져오기 위한, 첫번째 parse때 저장되는 blog의 url
-        # - entry의 link로 og:image구하면, 티스토리 이미지가 나옴 ->  블로그의 og:image는 지정한 이미지가 나옴
-        # - og:image는 thumbnail없는 경우 공통이므로, 1번 구해놓고 상태값으로 줘 -> 재활용
         self._source_url = None
         self._og_image_url = None
 
     def parse(self, text):
 
-        # result_text = requests_url(self.headers, self.target_id, self._url)
-        # if not result_text:
-        #     return False
-
-        # feed = feedparser.parse(self._url)
-        # if feed.status != 200:
-        #     return False
         feed = feedparser.parse(text)
 
         total_count = len(feed.entries)
@@ -45,80 +25,38 @@ class RssParser(object):
 
         source = feed['feed']
 
-        # print(f"출저 타입: {source.get('generator', None)}")  # 유튜브엔 없다
-        # yield로 1개씩 방출하면서, 그 부모의 name을 data에 추가 삽입 예정
-
         self._source_url = source.get('link', None)
         print(f"출저 url: {self._source_url}")
         print(f"출저 제목: {source.get('title', None)}")
         print(f"출저 부제목: {source.get('subtitle', None)}")
         print(f'총 글 갯수: {total_count}')
 
-        thumb_count = 0
-
         for entry in feed.entries:
-            # print('==============')
-            # 1개씩 for문내부에서 만든 dict를 yield하여 부모에게 방출
             data = dict()
 
-            # 여러 target를 가질 때 prefix용 (유튜브)  ex> 쌍보네TV xxx  조재성 xxx
-            # - blog는 cls의 NAME(source_category_name)을 표기 ex> 티스토리 xxx, 네이버 xxx
-            data['source_name'] = source.get('title', None)
             # 여러 target의 link 버튼용 (유튜브) -> 구독하기
-            data['source_url'] = source.get('link', None)
+            # data['source_name'] = source.get('title', None)
+            # data['source_url'] = source.get('link', None)
+            data['source'] = dict(
+                target_name=source.get('title', None),
+                target_url=source.get('link', None)
+            )
 
-            # url이 uniquekey라서 id로 삽입할 예정인데, id가 있다면 id로 넣고 없으면 url로 넣자
-            # if 'id' in entry:
-            #     data['id'] = entry['id']
-            # else:
-            #     data['id'] = entry.get('link')
-
-            # print(f'링크: {entry.get("link")}')
             data['url'] = entry.get("link")
-
-            # print(f'카테고리: {_get_category(entry.get("tags"))}')
             data['category'] = _get_category(entry.get("tags"))
-
-            # print(f'제목: {_get_text_title(entry.get("title"))}')
             data['title'] = _get_text_title(entry.get("title"))
-
-
-            # thumbnail = _get_thumbnail(entry) or self._get_og_image_url() or \
-            #             self._get_naver_post_image_url(entry.get("link"))
-            # data['thumbnail_url'] = thumbnail
             data['thumbnail_url'] = _get_thumbnail(entry)
 
-            # print(f'내용: {_get_text_body(entry)}')
             data['body'] = _get_text_body(entry)
 
-            # 날짜: 2019-02-21 02:18:24
-            # 1) published_parsed + mktime + fromtimestamp + pytz
+            # published_parsed + mktime + fromtimestamp + pytz
             utc_published = time_struct_to_utc_datetime(entry.get("published_parsed"))
-
-            # 2) published + datetutil + pytz
-            # utc_published = parser.parse(entry.get('published'))
-            #### => 쉬운방법으로 할 경우, timezone이 안들어간 utc_published가 생성될 수 있다.
-
-            # print("published + dateutil.parser", utc_published, type(utc_published))
             data['published'] = utc_published
             # 출력용
             kst_published = utc_to_local(utc_published)
-            # print(f'날짜: {kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")}')
-            data['published_string'] = kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초") # .strftime("%Y년 %m월 %d일 %H시 %M분 %S초")
-
-            # 필터링용
-            # target_date = _get_utc_target_date(before_days=1)
-            # print("target_date['start']", target_date['start'])
-            # print("utc_published", utc_published)
-            # print("target_date['end']", target_date['end'])
-            # is_target = target_date['start'] <= utc_published <= target_date['end']
-            # print(f'업데이트 대상 여부: {is_target}')
-            # break
+            data['published_string'] = kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")
 
             yield data
-
-        # print("thumb_count", thumb_count)
-        # return feed
 
 
 def _get_category(tags):
@@ -142,26 +80,13 @@ def time_struct_to_utc_datetime(published_parsed):
 
 
 def utc_to_local(utc_datetime, zone='Asia/Seoul'):
-    # 한번 localize를 쓰면, 또는 안됨. utc만 하고, astimezone( pytz.timezone('local'))로 바꿔주기)
     local_datetime = utc_datetime.astimezone(pytz.timezone(zone))  # utc ware -> kst aware
-
-    # 그래서 pytz를 사용할 때는 pytz.timezone.localize()를 항상 써야 하고, .astimezone()같은 파이썬의 표준 메서드들을 사용하고 싶다면 datetime.timezone을 사용해야 합니다.
-    # SQLAlchemy DB 모델 객체의 DateTime 컬럼에서 timezone=True 옵션을 켜서 사용하고 있습니다.
-    # => DateTime 칼럼에 timezone=True 옵션을 사용하면, SQLAlchemy에서 내부적으로 datetime 객체를 UTC로 저장합니다. 따라서, 별도로 datetime 객체를 UTC로 변환해주지 않아도 자동으로 UTC로 저장됩니다.
-    #   class MyModel(Base):
-    #     __tablename__ = 'my_table'
-    #     id = Column(Integer, primary_key=True)
-    #     my_datetime = Column(DateTime(timezone=True))
-
-    #   my_object = MyModel(my_datetime=kst_time)
-
     return local_datetime  # 외부에서 strftime
 
 
 def _get_utc_target_date(before_days=1, zone='Asia/Seoul'):
-    #### 익명 now -> KST now -> KST now -1일 00:00 ~ 23:59 -> utc -1일 00:00 ~ 23:59
-
-    # 1.  unkownn now -> kst now
+    # 익명 now -> KST now -> KST now -1일 00:00 ~ 23:59 -> utc -1일 00:00 ~ 23:59
+    # 1.  unknown now -> kst now
     local_now = pytz.timezone(zone).localize(datetime.now())
 
     # 2.  kst now -> kst target_datetime
@@ -264,59 +189,3 @@ def _get_thumbnail(entry):
         return img_tag['src']
     else:
         return None
-
-
-# class TistoryParser(RssParser):
-#     def __init__(self, target_id):
-#         super().__init__(target_id)
-#         self._url = f"https://{self.target_id}.tistory.com/rss"
-#
-#
-# class NaverParser(RssParser):
-#     def __init__(self, target_id):
-#         super().__init__(target_id)
-#         self._url = f"https://rss.blog.naver.com/{self.target_id}.xml"
-#
-#
-# # youtube_settings = dict(
-# #     # channel_id= "UChZt76JR2Fed1EQ_Ql2W_cw",
-# #     playlist_id="PLjOVTdDf5WwKcFSteiDyPA09toLYZcD1p",
-# # )
-#
-#
-# def _build_youtube_url(target_id):
-#     # 조합: https://github.com/Zaltu/youtube-rss-email/blob/master/BetterYoutube/youtube_utils.py
-#
-#     BASE_URL = 'https://www.youtube.com/feeds/videos.xml?'
-#
-#     if target_id.startswith("UC"):
-#         return BASE_URL + '&' + 'channel_id' + '=' + target_id
-#     elif target_id.startswith("PL"):
-#         return BASE_URL + '&' + 'playlist_id' + '=' + target_id
-#     else:
-#         raise ValueError(f'UC 또는 PL로 시작해야합니다. Unvalid target_id: {target_id}')
-#
-#
-# class YoutubeParser(RssParser):
-#     def __init__(self, target_id):
-#         super().__init__(target_id)
-#         self._url = _build_youtube_url(target_id)
-
-
-# if __name__ == '__main__':
-    # tistory_parser = TistoryParser('nittaku')
-    # tistory_parser.parse()
-    # for feed in tistory_parser.parse():
-    #     print(feed)
-
-    # naver_parser = NaverParser('is2js')
-    # # naver_parser.parse()
-    # for feed in naver_parser.parse():
-    #     print(feed)
-
-    # youtube_parser = YoutubeParser('UC-lgoofOVXSoOdRf5Ui9TWw') # 쌍보네TV
-    # youtube_parser.parse()
-
-    # youtube_parser = YoutubeParser('UChZt76JR2Fed1EQ_Ql2W_cw') # 재성
-    # for feed in youtube_parser.parse():
-    #     print(feed)
