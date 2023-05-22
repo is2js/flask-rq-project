@@ -265,7 +265,7 @@
         # SourceCategory 필터링
         source_category_name = self.get_source_category_name()
         # Source-target_url(Youtube, Blog) or name(URL) 및 Feed-category(Blog) 필터링
-        target_info_for_filter = self.get_target_info_for_filter() 
+        target_info_for_filter = self.get_target_infos() 
         display_numbers = self.get_display_numbers()
 
         feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers)
@@ -473,3 +473,308 @@
 - tasks/rss_fetcher.py에서 사용한다
 
 ### github도 똑같이 처음부터 적용하기
+
+### markdown create의 html생성부분을 Service.render()메서드로 옮기기
+1. base_serivce.py에 `render`메서드를 정의한다.
+    - 각 source_category마다 달라지는 부분을 추상메서드로 구현한다.
+        - get_title, set_custom, set_feed_template
+        - title_level은 공통상수로서 메서드 기본 keyword에 넣어둔다.
+    ```python
+    class SourceService:
+        def render(self, title_level=SourceConfig.TITLE_LEVEL):
+            # updated_at = pytz.timezone('Asia/Seoul').localize(datetime.now())
+            # kst로 바로 localize하니까, strftime이 안찍히는 듯
+            utc_updated_at = pytz.utc.localize(datetime.utcnow())
+            kst_updated_at = utc_updated_at.astimezone(pytz.timezone('Asia/Seoul'))
+            markdown_text = ''
+            markdown_text += TITLE_TEMPLATE.format(title_level, self.get_title(),
+                                                   kst_updated_at.strftime("%Y-%m-%d %H:%M:%S"))
+            markdown_text += self.set_custom()
+            markdown_text += TABLE_START
+            markdown_text += self.set_feed_template(self.get_feeds())
+            markdown_text += TABLE_END
+    
+            return markdown_text
+   
+        @abstractmethod
+        def get_title(self):
+            raise NotImplementedError
+   
+        def set_custom(self):
+            return ''
+    
+        @abstractmethod
+        def set_feed_template(self, feeds):
+            raise NotImplementedError
+    ```
+
+2. custom템플릿을 넣거, feed마다 prefix넣는여부를알기 위해 `is_many_source`메서드도 만들어준다.
+    - **이 때, 실시간 target정보(id or id+category or name+url)인 `self.get_target_info_for_filter()`를 통해 판단한다**
+    - filter에만 사용하는게 아니므로 self.get_target_info_for_filter 를 `get_target_infos`로 변경해주자
+    ```python
+    def is_many_source(self):
+        return len(self.get_target_infos()) > 1
+    ```
+2. 각 Service마다 `get_title`, `set_custom`, `set_feed_template`를 구현해준다.
+    - set_custom 혹은 set_feed_template에서 `self.is_many_source()`가 활용된다.
+    ```python
+    class YoutubeService(SourceService):
+        #...
+        def get_title(self):
+            return SourceConfig.YOUTUBE_TITLE
+    
+        def set_custom(self):
+            custom_result = ''
+    
+            target_ids = self.get_target_infos()
+            if len(target_ids) == 1 and target_ids[0].startswith('UC'):
+                custom_button = YOUTUBE_CUSTOM_TEMPLATE.format(target_ids[0])
+                custom_result += custom_button
+    
+            return custom_result
+    
+        def set_feed_template(self, feeds):
+            feed_template_result = ''
+    
+            for feed in feeds:
+                feed_text = YOUTUBE_FEED_TEMPLATE.format(
+                    feed.url,  # feed['url'],
+                    feed.thumbnail_url,
+                    feed.url,
+                    feed.title,
+                    f'<span style="color:black">{feed.source.target_name} | </span>' if self.is_many_source() else '',
+                    feed.published_string
+                )
+                feed_template_result += feed_text
+    
+            return feed_template_result
+    ```
+   
+3. blog_service의 경우 is_many_source의 기준을 **Tistory + Naver일때로 둔다**
+    ```python
+    class BlogService(SourceService):
+        def get_title(self):
+            return SourceConfig.BLOG_TITLE
+    
+        def set_custom(self):
+            custom_result = ''
+    
+            return custom_result
+    
+        def is_many_source(self):
+            return len(SourceConfig.tistory_target_id_and_categories) >= 1 and len(SourceConfig.naver_target_id_and_categories) >= 1
+    
+        def set_feed_template(self, feeds):
+            feed_template_result = ''
+    
+            for feed in feeds:
+                feed_text = BLOG_FEED_TEMPLATE.format(
+                    feed.url,
+                    feed.thumbnail_url,
+                    feed.url,
+                    feed.title,
+                    f'{feed.source.name} | ' if self.is_many_source() else '',
+                    feed.published_string
+                )
+                feed_template_result += feed_text
+    
+            return feed_template_result
+    ```
+   
+4. url_service
+    ```python
+    class URLService(SourceService):
+        def get_title(self):
+            return SourceConfig.URL_TITLE
+    
+        def set_custom(self):
+            custom_result = ''
+    
+    
+            custom_result += f'''\
+    <div align="center">
+        📢 <sup><sub><strong>구독대상:</strong> {', '.join(self.get_target_infos())}</sub></sup>
+    </div>
+    '''
+            return custom_result
+    
+        def set_feed_template(self, feeds):
+            feed_template_result = ''
+    
+            for feed in feeds:
+                feed_text = URL_FEED_TEMPLATE.format(
+                    feed.source.url,
+                    feed.source.name,
+                    f"{feed.category}" if feed.category else '',
+                    feed.url,
+                    feed.title,
+                    feed.published_string
+                )
+                feed_template_result += feed_text
+    
+            return feed_template_result
+    ```
+   
+### github의 경우, manage.py에 service render들을 호출하기 위해 rss_source/init.py에 새로 정의한다
+1. rss_source/init.py
+    ```python
+    def render_all_service(default_path='./default.md', readme_path='./readme.md'):
+        youtube_service = YoutubeService()
+        blog_service = BlogService()
+        url_service = URLService()
+    
+        markdown_text = ''
+        markdown_text += youtube_service.render()
+        markdown_text += blog_service.render()
+        markdown_text += url_service.render()
+    
+        with open(readme_path, 'w', encoding="UTF-8") as readme:
+            with open(default_path, 'r', encoding="UTF-8") as default:
+                readme.write(default.read() + '\n')
+            readme.write(markdown_text)
+    ```
+   
+2. manage.py에서 호출한다
+    ```python
+    from rss_sources import create_database, fetch_all_service, render_all_service
+    
+    create_database()
+    fetch_all_service()
+    
+    render_all_service()
+    ```
+   
+### init에 SourceConfig를 확인하여, 허용된 Service객체들을 가져오는 메서드 만들기
+#### github에서
+1. rss_sources/init.py에 `get_current_services`로 현재 사용되는 service객체들을 받아오는 메서드를 만든다.
+    ```python
+    # rss_sources/__init__.py:
+    def get_current_services():
+        current_services = []
+        if SourceConfig.youtube_target_ids:
+            current_services.append(YoutubeService())
+        if SourceConfig.tistory_target_id_and_categories or SourceConfig.naver_target_id_and_categories:
+            current_services.append(BlogService())
+        if SourceConfig.url_and_names:
+            current_services.append(URLService())
+        return current_services
+    ```
+2. manage.py에서 `service객체들`을 받아와 `fetch` + `render`를 재활용해서 호출한다
+    ```python
+    from rss_sources import create_database, get_current_services, parse_logger
+    
+    # db.sqlite가 없으면 생성
+    create_database()
+    # 사용지정된 service객체들만 가져오기
+    service_list = get_current_services()
+    ```
+    ```python
+    def fetch_feeds_by(service_list):
+        for service in service_list:
+            try:
+                new_feeds = service.fetch_new_feeds()
+            except Exception as e:
+                parse_logger.info(f'{str(e)}', exc_info=True)
+    
+    
+    def create_readme(service_list):
+        markdown_text = ''
+        for service in service_list:
+            markdown_text += service.render()
+    
+        with open('./readme.md', 'w', encoding="UTF-8") as readme:
+            with open('./default.md', 'r', encoding="UTF-8") as default:
+                readme.write(default.read() + '\n')
+    
+            readme.write(markdown_text)
+    
+    
+    # db.sqlite가 없으면 생성
+    create_database()
+    # 사용지정된 service객체들만 가져오기
+    service_list = get_current_services()
+    
+    
+    fetch_feeds_by(service_list)
+    create_readme(service_list)
+    ```
+
+
+### rq프로젝트에서는 service들의 render메서드들을 호출하여 template에 보여줘야한다
+1. rss_sources/init에 `get_current_services`를 정의한 뒤
+    ```python
+    app/rss_sources/__init__.py
+    def get_current_services():
+        current_services = []
+        if SourceConfig.youtube_target_ids:
+            current_services.append(YoutubeService())
+        if SourceConfig.tistory_target_id_and_categories or SourceConfig.naver_target_id_and_categories:
+            current_services.append(BlogService())
+        if SourceConfig.url_and_names:
+            current_services.append(URLService())
+        return current_services
+    ```
+   
+
+2. tasks/rss_fetcher.py에서 활용하고
+    ```python
+    # app/tasks/rss_fetcher.py
+    from app.rss_sources import get_current_services
+    from app.utils import schedule_logger
+    
+    
+    def fetch_rss():
+    
+        service_list = get_current_services()
+        
+        for service in service_list:
+            try:
+                new_feeds = service.fetch_new_feeds()
+            except Exception as e:
+                schedule_logger.info(f'{str(e)}', exc_info=True)
+    ```
+   
+3. views.py에서도 활용하여, render text를 만든다.
+    ```python
+    @main_bp.route('/rss', methods=['GET', 'POST'])
+    def rss():
+        current_services = get_current_services()
+    
+        markdown_text = ''
+        for service in current_services:
+            markdown_text += service.render()
+   
+        return render_template('rss.html', markdown_text=markdown_text)
+    ```
+   
+
+### markdown text => html로 변환 => jinja | safe필터로 나타내기
+1. `markdown2`패키지를 깔고 `markdown2.markdown( markdown_text )`로 변수를 만들어 넘겨줘야한다
+    ```shell
+    pip install markdown2
+    pip freeze > ./requirements.txt
+   
+    docker-compose build --no-cache app
+    ```
+   
+2. views.py에서 route에 `markdown -> html`변수로 넘겨주기
+    ```python
+    @main_bp.route('/rss', methods=['GET', 'POST'])
+    def rss():
+        current_services = get_current_services()
+    
+        markdown_text = ''
+        for service in current_services:
+            markdown_text += service.render()
+    
+        markdown_html = markdown2.markdown(markdown_text)
+    
+        return render_template('rss.html', markdown_html=markdown_html)
+    ```
+   
+3. rss.html에서 `{{ markdown_html | safe}}`로 찍기
+    ```html
+        <div>
+            {{markdown_html | safe }}
+        </div>
+    ```

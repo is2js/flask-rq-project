@@ -4,9 +4,11 @@ import string
 import random
 from datetime import datetime, timedelta
 
+import markdown2 as markdown2
 from flask import request, render_template, flash, session, redirect, url_for, jsonify, Blueprint, current_app as app
 from sqlalchemy import asc
 from app.extentions import queue
+from app.rss_sources import YoutubeService, SourceConfig, BlogService, URLService, get_current_services
 from app.tasks import count_words, create_image_set, send_async_mail
 from app.models import Task, Message, Notification
 from app.tasks.service import TaskService
@@ -311,7 +313,10 @@ def change_username():
     # 처리할 거 다하고 session.clear()를 써도 된다.
     session.clear()
 
-    return redirect(url_for('main.send_mail'))
+    # return redirect(url_for('main.send_mail'))
+    # return redirect(request.url) # 이것은 change_user로 redict
+    # 처리후 이전페이지 redirect는 request.referrer를 쓰면 된다.
+    return redirect(request.referrer)
 
 
 @main_bp.route('/messages')
@@ -348,3 +353,17 @@ def notifications():
     # logger.debug([ n.to_dict() for n in notifications])
 
     return jsonify([n.to_dict() for n in notifications])
+
+
+
+@main_bp.route('/rss', methods=['GET', 'POST'])
+def rss():
+    current_services = get_current_services()
+
+    markdown_text = ''
+    for service in current_services:
+        markdown_text += service.render()
+
+    markdown_html = markdown2.markdown(markdown_text)
+
+    return render_template('rss.html', markdown_html=markdown_html)

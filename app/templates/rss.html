@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"
+          integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+
+    <!-- 추가 스크립트 -->
+    <!-- DatetimePicker CSS 파일 -->
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css">
+
+    <title>RSS</title>
+</head>
+
+<body>
+
+
+<div class="container">
+    {{session.username}}으로 접속되었습니다. <a href="{{ url_for('main.change_username') }}">사용자 변경</a>
+    <a href="{{ url_for('main.messages') }}">
+        Message
+        <span id="message_count"
+              class="badge"
+              style="visibility: {% if session.new_messages %}visible{% else %}hidden {% endif %};"
+        >{{ session.new_messages }}</span>
+    </a>
+    {% if session.last_message_read_time %}
+    <small class="text-muted">마지막 메세지 확인시간: {{session.last_message_read_time.strftime('%Y %m %d %H:%M:%S')}}</small>
+    {% endif %}
+
+
+    <!-- flash message   -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show mt-3" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- 진행 중인 작업 -->
+    <div>
+        {{ markdown_html | safe }}
+    </div>
+
+
+</div>
+
+
+<!-- jquery는 $.ajax호출을 위해 slim제거 + integrity부분 제거 -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"
+        crossorigin="anonymous"></script>
+
+<!-- 추가 스크립트 1 -->
+<script type="text/javascript" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+<!-- 추가 스크립트 2( moment -> picker)   -->
+<!-- Moment JS 파일 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+<!-- DatetimePicker JS 파일 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js"></script>
+
+<script>
+    $(function () {
+        // datetimepicker 초기화
+        $('#datetimepicker').datetimepicker({
+            format: 'YYYY-MM-DD HH:mm:ss',
+            sideBySide: true,
+            minDate: moment(),
+        });
+
+        // datetimepicker에서 선택된 시간을 input창에 넣어주기
+        $('#datetimepicker').on('change.datetimepicker', function (e) {
+            $('input[name="scheduled_time"]').val(moment(e.date).format('YYYY-MM-DD HH:mm:ss'));
+        });
+
+        // is_scheduled 체크박스 이벤트 처리
+        $('input[name="is_scheduled"]').change(function () {
+            var is_scheduled = $(this).is(':checked');
+            if (is_scheduled) {
+                $('#scheduled_time_field').show();
+            } else {
+                $('#scheduled_time_field').hide();
+            }
+        });
+
+    });
+</script>
+
+</body>
+
+</html>

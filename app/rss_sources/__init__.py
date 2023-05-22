@@ -2,66 +2,19 @@ from app import Base, engine
 from app.rss_sources.markdown_creator import YoutubeMarkdown, BlogMarkdown, URLMarkdown
 from app.rss_sources.services import YoutubeService, BlogService, URLService
 from .templates import YOUTUBE_FEED_TEMPLATE, BLOG_FEED_TEMPLATE, URL_FEED_TEMPLATE
-from app.utils import parse_logger
 
 from app.rss_sources.config import SourceConfig
 
 
-def get_youtube_markdown():
-    if not SourceConfig.youtube_target_ids:
-        return ''
-
-    try:
-        youtube_markdown = YoutubeMarkdown(SourceConfig.youtube_target_ids)
-        return youtube_markdown.create(
-            title=SourceConfig.YOUTUBE_TITLE,
-            feed_template=YOUTUBE_FEED_TEMPLATE,
-            display_numbers=SourceConfig.YOUTUBE_DISPLAY_NUMBERS
-        )
-
-    except Exception as e:
-        parse_logger.error(f'youtube markdown 생성 실패: {str(e)}')
-        return ''
-
-
-def get_blog_markdown():
-    if not SourceConfig.tistory_target_id_and_categories and not SourceConfig.naver_target_id_and_categories:
-        return ''
-
-    try:
-        blog_markdown = BlogMarkdown(
-            tistory_targets=SourceConfig.tistory_target_id_and_categories,
-            naver_targets=SourceConfig.naver_target_id_and_categories
-        )
-        return blog_markdown.create(
-            title=SourceConfig.BLOG_TITLE,
-            feed_template=BLOG_FEED_TEMPLATE,
-            display_numbers=SourceConfig.BLOG_DISPLAY_NUMBERS
-        )
-
-    except Exception as e:
-        parse_logger.error(f'blog markdown 생성 실패: {str(e)}')
-        return ''
-
-
-def get_url_markdown():
-    if not SourceConfig.url_and_names:
-        return ''
-
-    try:
-        url_markdown = URLMarkdown(
-            # 민족의학신문("rss_url")
-            # [globals()[name](url) for url, name in SourceConfig.url_and_names]
-            SourceConfig.url_and_names
-        )
-        return url_markdown.create(
-            title=SourceConfig.URL_TITLE,
-            feed_template=URL_FEED_TEMPLATE,
-            display_numbers=SourceConfig.URL_DISPLAY_NUMBERS
-        )
-    except Exception as e:
-        parse_logger.error(f'url markdown 생성 실패: {str(e)}')
-        return ''
+def get_current_services():
+    current_services = []
+    if SourceConfig.youtube_target_ids:
+        current_services.append(YoutubeService())
+    if SourceConfig.tistory_target_id_and_categories or SourceConfig.naver_target_id_and_categories:
+        current_services.append(BlogService())
+    if SourceConfig.url_and_names:
+        current_services.append(URLService())
+    return current_services
 
 
 if __name__ == '__main__':
