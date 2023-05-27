@@ -8,7 +8,7 @@ import markdown2 as markdown2
 from flask import request, render_template, flash, session, redirect, url_for, jsonify, Blueprint, current_app as app
 from sqlalchemy import asc
 from app.extentions import queue
-from app.rss_sources import YoutubeService, SourceConfig, BlogService, URLService, get_current_services
+from app.rss_sources import get_current_services
 from app.tasks import count_words, create_image_set, send_async_mail
 from app.models import Task, Message, Notification
 from app.tasks.service import TaskService

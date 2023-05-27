@@ -1,5 +1,4 @@
 from app import Base, engine
-from app.rss_sources.markdown_creator import YoutubeMarkdown, BlogMarkdown, URLMarkdown
 from app.rss_sources.services import YoutubeService, BlogService, URLService
 from .templates import YOUTUBE_FEED_TEMPLATE, BLOG_FEED_TEMPLATE, URL_FEED_TEMPLATE
 

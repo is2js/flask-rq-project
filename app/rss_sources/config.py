@@ -16,7 +16,7 @@ class SourceConfig:
     BLOG_TITLE = os.getenv('BLOG_TITLE', None) or "📚 최근 블로그"
 
     blog_display_numbers_or_none = os.getenv('BLOG_DISPLAY_NUMBERS', None)
-    BLOG_DISPLAY_NUMBERS = int(blog_display_numbers_or_none) if blog_display_numbers_or_none else 5
+    BLOG_DISPLAY_NUMBERS = int(blog_display_numbers_or_none) if blog_display_numbers_or_none else 10
 
     # TISOTRY
     tistory_target_ids = [item.strip() for item in os.getenv('TISTORY_TARGET_IDS').split(',') if item]
@@ -34,13 +34,13 @@ class SourceConfig:
     YOUTUBE_TITLE = os.getenv('YOUTUBE_TITLE', None) or "🎞 최근 유튜브"
 
     youtube_display_numbers_or_none = os.getenv('YOUTUBE_DISPLAY_NUMBERS', None)
-    YOUTUBE_DISPLAY_NUMBERS = int(youtube_display_numbers_or_none) if youtube_display_numbers_or_none else 5
+    YOUTUBE_DISPLAY_NUMBERS = int(youtube_display_numbers_or_none) if youtube_display_numbers_or_none else 10
 
     youtube_target_ids = [item.strip() for item in os.getenv('YOUTUBE_TARGET_IDS').split(',') if item]
 
     ## URL
     URL_TITLE = os.getenv('URL_TITLE', None) or "📆 관심 RSS 구독"
-    URL_DISPLAY_NUMBERS = int(os.getenv('URL_DISPLAY_NUMBERS', None)) or 5
+    URL_DISPLAY_NUMBERS = int(os.getenv('URL_DISPLAY_NUMBERS', None)) or 10
 
     urls = [item.strip() for item in os.getenv('URL_LIST').split(',') if item]
     url_names = [item.strip() for item in os.getenv('URL_NAME').split(',') if item]

@@ -1,5 +1,7 @@
 from datetime import timedelta, datetime
 
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
 from flask import Flask
 
 
@@ -8,6 +10,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.config import Config
+from .extentions import docs
 
 from .templates.filters import remain_from_now
 
@@ -29,7 +32,6 @@ naming_convention = {
 
 Base.metadata = MetaData(naming_convention=naming_convention)
 
-
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -41,8 +43,9 @@ def create_app():
     Base.metadata.create_all(bind=engine)
 
     # from app import views
-    from app.views import main_bp
+    from app.views import main_bp, rss_bp
     app.register_blueprint(main_bp)
+    app.register_blueprint(rss_bp)
 
     # dashboard
     import rq_dashboard
@@ -53,6 +56,20 @@ def create_app():
     # scehduler task
     from app import tasks
     tasks.init_app(app)
+
+    # apispec  초기화
+    # - docs객체에 route정보들 다 입력된 상태에서 init
+    docs.init_app(app)
+    app.config.update({
+        'APISPEC_SPEC': APISpec(
+            title='chat',  # [swagger-ui] 제목
+            version='v1',  # [swagger-ui] 버전
+            openapi_version='2.0',  # swagger 자체 버전
+            plugins=[MarshmallowPlugin()]
+        ),
+        'APISPEC_SWAGGER_URL': '/swagger/'  # swagger 자체 정보 url
+    })
+    # cors.init_app(app)
 
     @app.shell_context_processor
     def make_shell_context():
