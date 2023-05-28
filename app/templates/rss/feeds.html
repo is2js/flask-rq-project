@@ -1,0 +1,56 @@
+{% extends "shared/_layout.html" %}
+{% block main_content %}
+
+    <div class="hero category-details"
+         style="background: url(/static/image/source_categories/apple.jpg) no-repeat center center; background-size: auto;background-size: cover;">
+        <div class="hero-inner">
+            <h1>test</h1>
+        </div>
+
+    </div>
+
+    <div class="container videos category">
+        {% for row in rows %}
+            <div class="row">
+                <div class="col-md-1"></div>
+                {% for feed, count in row %}
+                    <div class="col-md-3 video">
+                        {% if feed %}
+                        <div>
+                            <a href="{{feed.url}}">
+
+
+                                <img src="{{feed.thumbnail_url or url_for('static', filename='image/source_categories/' + feed.name  + '.jpg')}}"
+                                     class="img img-responsive "
+                                     alt="{{feed.title}}"
+                                     title="{{feed.title}}">
+
+
+                            </a>
+                            <a href="/test" class="author">{{feed.name}}</a>
+                            <div class="views">{{count}}</div>
+                        {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+   <div class="container add-video category">
+        <div class="row click-to-add">
+            <div class="col-md-4"></div>
+            <div class="col-md-4">
+
+                {{ render_partial('rss/partials/show_add_form.html',
+                                    cat_name="test") }}
+
+            </div>
+            <div class="col-md-4"></div>
+        </div>
+    </div>
+
+
+{% endblock %}
+
+{% block title %}Feed Collector{% endblock %}

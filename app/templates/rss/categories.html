@@ -1,0 +1,31 @@
+{% extends "shared/_layout.html" %}
+{% block main_content %}
+
+    <div class="hero">
+        <div class="hero-inner">
+            <h1>RSS Collector</h1>
+            <h2>Youtube, Blog, URL까지! - 나만의 <span class="yahoo">RSS Collector</span>를 만들 수 있다.</h2>
+        </div>
+
+    </div>
+
+
+    <div class="container categories">
+        {% for row in rows %}
+            <div class="row">
+                <div class="col-md-1"></div>
+                {% for source_category, count, names in row %}
+                    <div class="col-md-3 category">
+                        <a href="{{ source_category.url }}">
+                            <img src="/static/image/source_categories/{{ source_category.name }}.png" height="150px" class="img img-responsive" alt=""></a>
+                        <div>
+                            <span class="title">{{ source_category.name }}</span> ({{ count }})
+                            <div class="text-muted small">{{ names | safe }}</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}

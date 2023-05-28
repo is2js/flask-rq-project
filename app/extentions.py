@@ -1,3 +1,4 @@
+import jinja_partials
 from flask_apispec import FlaskApiSpec
 from flask_mail import Mail
 import redis

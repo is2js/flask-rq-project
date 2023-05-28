@@ -8,6 +8,7 @@ class Tistory(TargetSource):
 
     def map(self, feed):
         if not feed['thumbnail_url']:
-            feed['thumbnail_url'] = "./rss_sources/images/tistory.png" # self._get_og_image_url(feed['url'])
+            # feed['thumbnail_url'] = "./rss_sources/images/tistory.png" # self._get_og_image_url(feed['url'])
+            feed['thumbnail_url'] = None
 
         return feed

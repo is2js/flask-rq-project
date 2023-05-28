@@ -1,10 +1,11 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, render_template, abort
 from flask_apispec import marshal_with
 
 from app import docs
+from app.models import SourceCategory
 from app.rss_sources import get_current_services
 from app.views.base_view import BaseView
-from app.utils import logger
+from app.utils import logger, grouped
 from app.views.schemas import FeedListResponseSchema
 
 rss_bp = Blueprint('rss', __name__, url_prefix='/rss')
@@ -45,3 +46,36 @@ def error_handler(err):
 
 
 FeedListView.register(rss_bp, docs, '/feeds', 'feedlistview')
+
+
+@rss_bp.route('/main')
+def get_categories():
+    try:
+        categories_with_source_count_and_names = SourceCategory.get_list_with_source_count_and_names()
+        # print(categories_with_source_count_and_names)
+        rows = list(grouped(categories_with_source_count_and_names, 3))
+
+        return render_template('/rss/categories.html', rows=rows)
+    except Exception as e:
+        logger.error(f'{str(e)}', exc_info=True)
+        abort(422)
+
+
+
+# @rss_bp.route('/main')
+# def get_categories():
+#     try:
+#         feeds = []
+#         for service in get_current_services():
+#             feeds += service.get_feeds()
+#
+#         rows = list(grouped(feeds, 3))
+#     except Exception as e:
+#         logger.error(f'{str(e)}', exc_info=True)
+#     try:
+#         categories = SourceCategory.get_list_with_source_count()
+#         print(categories)
+#     except Exception as e:
+#         logger.error(f'{str(e)}', exc_info=True)
+#
+#     return render_template('/rss/feeds.html', rows=rows)

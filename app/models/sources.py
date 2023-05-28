@@ -1,6 +1,7 @@
-from sqlalchemy.orm import relationship
+from sqlalchemy import func, and_, or_, case
+from sqlalchemy.orm import relationship, joinedload
 
-from .base import BaseModel, db
+from .base import BaseModel, db, transaction
 
 
 class SourceCategory(BaseModel):
@@ -11,6 +12,44 @@ class SourceCategory(BaseModel):
     name = db.Column(db.Text, nullable=False, unique=True, index=True)
 
     sources = relationship('Source', back_populates='source_category', cascade='all, delete-orphan')
+
+    @classmethod
+    def get_list_with_source_count_and_names(cls):
+        # .with_entities(cls, func.count(Source.id), func.group_concat(Source.target_name, '</br>')) \
+        get_list_with_count_and_source_names = cls.query \
+            .outerjoin(cls.sources) \
+            .filter(cls.source_config_filter()) \
+            .with_entities(cls, func.count(Source.id), func.group_concat(Source.target_name, '</br>')) \
+            .group_by(cls.id) \
+            .all()
+        #  [(<SourceCategory object at 0x7f3250a74f40>, 2, '쌍보네TV</br>조재성'), (<SourceCategory object at 0x7f3250a74b80>, 2, '동신한의</br>is2js의블로그')]
+        return get_list_with_count_and_source_names
+
+    @classmethod
+    def source_config_filter(cls):
+        _Source = cls.sources.mapper.class_
+
+        from app.rss_sources import SourceConfig
+
+        target_filter = case(
+            (
+                cls.name == "Youtube",
+                or_(_Source.target_url.contains(target_id) for target_id in SourceConfig.youtube_target_ids if
+                    target_id)
+            ),
+            (
+                cls.name == "Blog",
+                or_(*[_Source.target_url.contains(target_id) for target_id, category in
+                      SourceConfig.tistory_target_id_and_categories + SourceConfig.naver_target_id_and_categories
+                      if target_id])),
+            (
+                cls.name == "URL",
+                or_(*[_Source.name.__eq__(target_name) for target_url, target_name in SourceConfig.url_and_names if
+                      target_name])),
+            else_=None
+        )
+
+        return target_filter
 
 
 class Source(BaseModel):

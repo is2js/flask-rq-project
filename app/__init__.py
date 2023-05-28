@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 
+import jinja_partials
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from flask import Flask
@@ -35,6 +36,7 @@ Base.metadata = MetaData(naming_convention=naming_convention)
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    jinja_partials.register_extensions(app)
 
     from .extentions import mail
     mail.init_app(app)
