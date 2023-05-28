@@ -48,7 +48,7 @@ def error_handler(err):
 FeedListView.register(rss_bp, docs, '/feeds', 'feedlistview')
 
 
-@rss_bp.route('/main')
+@rss_bp.route('/categories')
 def get_categories():
     try:
         categories_with_source_count_and_names = SourceCategory.get_list_with_source_count_and_names()
@@ -60,6 +60,18 @@ def get_categories():
         logger.error(f'{str(e)}', exc_info=True)
         abort(422)
 
+
+@rss_bp.route('/categories/all')
+def get_all_feeds():
+    # try:
+    service_list = get_current_services()
+    feeds = []
+    for service in service_list:
+        feeds += service.get_feeds()
+    return render_template('/rss/feeds.html', feeds=feeds)
+    # except Exception as e:
+    #     logger.error(f'{str(e)}', exc_info=True)
+    #     abort(422)
 
 
 # @rss_bp.route('/main')

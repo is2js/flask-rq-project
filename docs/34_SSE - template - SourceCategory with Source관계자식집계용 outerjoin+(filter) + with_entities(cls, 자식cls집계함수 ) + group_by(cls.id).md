@@ -45,7 +45,7 @@
    
 2. `rss/main` url에 `categories.html`을 타겟팅하면서, 데이터를 가져온 뒤, list(grouped())를 통해 rows로 반환한다
     ```python
-    @rss_bp.route('/main')
+    @rss_bp.route('/categories')
     def get_categories():
         try:
             categories_with_count_and_names = SourceCategory.get_list_with_count_and_source_names()

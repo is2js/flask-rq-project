@@ -1,56 +1,55 @@
 {% extends "shared/_layout.html" %}
 {% block main_content %}
 
-    <div class="hero category-details"
-         style="background: url(/static/image/source_categories/apple.jpg) no-repeat center center; background-size: auto;background-size: cover;">
-        <div class="hero-inner">
-            <h1>test</h1>
-        </div>
+    <div class="search-inputs">
+        <h1>Search video collector</h1>
+        <input
+                name="search_text"
+                placeholder="Search for a video ..."
+                class="form-control"
+                type="text"
+                value="{{ search_text or '' }}"
+                hx-get="/videos/search"
+                hx-trigger="keyup changed delay:250ms"
+                hx-target="#search-results"
+                hx-push-url="true">
 
     </div>
 
-    <div class="container videos category">
-        {% for row in rows %}
-            <div class="row">
-                <div class="col-md-1"></div>
-                {% for feed, count in row %}
-                    <div class="col-md-3 video">
-                        {% if feed %}
-                        <div>
-                            <a href="{{feed.url}}">
+    <div class="videos search-results" id="search-results">
 
-
-                                <img src="{{feed.thumbnail_url or url_for('static', filename='image/source_categories/' + feed.name  + '.jpg')}}"
-                                     class="img img-responsive "
-                                     alt="{{feed.title}}"
-                                     title="{{feed.title}}">
-
-
-                            </a>
-                            <a href="/test" class="author">{{feed.name}}</a>
-                            <div class="views">{{count}}</div>
-                        {% endif %}
-                        </div>
+<!--        {% if search_text %}-->
+<!--            {{  render_partial('videos/partials/search_results.html', videos=videos) }}-->
+<!--        {% endif %}-->
+        <div class="search-result-count">{{ feeds | length }} results</div>
+        <div class="container">
+            {% for feed in feeds %}
+                {% if feed %}
+                <div class="row search-result-row">
+                    <div class="col-md-2"></div>
+                    <div class="video search-result col-md-3 text-center">
+                        <a href="{{ feed.url }}">
+                            <img src="{{feed.thumbnail_url or url_for('static', filename='/image/source_categories/' + feed.source.source_category.name + '.png') }}"
+                                 class="img img-responsive {{ ' '.join(classes) }} img-fluid"
+                                 alt="{{ feed.title }}"
+                                 title="{{ feed.title }}"
+                                 height="100px"
+                            >
+                        </a>
                     </div>
-                {% endfor %}
-            </div>
-        {% endfor %}
-    </div>
-
-   <div class="container add-video category">
-        <div class="row click-to-add">
-            <div class="col-md-4"></div>
-            <div class="col-md-4">
-
-                {{ render_partial('rss/partials/show_add_form.html',
-                                    cat_name="test") }}
-
-            </div>
-            <div class="col-md-4"></div>
+                    <div class="video search-result col-md-6 my-auto">
+                            <div><a href="{{ feed.url }}" class="h5 font-weight-bold">{{ feed.title }}</a></div>
+                            <div><span class="author">{{ feed.source.target_name }}</span></div>
+                            <div>{{ feed.published_string }} views</div>
+                    </div>
+                    <div class="col-md-1"></div>
+                </div>
+                {% endif%}
+            {% endfor %}
         </div>
-    </div>
 
+    </div>
 
 {% endblock %}
 
-{% block title %}Feed Collector{% endblock %}
+{% block title %}Search @ Video Collector{% endblock %}
