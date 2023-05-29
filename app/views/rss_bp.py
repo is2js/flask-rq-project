@@ -3,7 +3,7 @@ from flask_apispec import marshal_with
 
 from app import docs
 from app.models import SourceCategory
-from app.rss_sources import get_current_services
+from app.rss_sources import get_current_services, YoutubeService, BlogService, URLService
 from app.views.base_view import BaseView
 from app.utils import logger, grouped
 from app.views.schemas import FeedListResponseSchema
@@ -69,6 +69,28 @@ def get_all_feeds():
     for service in service_list:
         feeds += service.get_feeds()
     return render_template('/rss/feeds.html', feeds=feeds)
+
+
+@rss_bp.route('/categories/<category_name>')
+def get_feeds(category_name):
+    # service_list = get_current_services()
+    if category_name == 'youtube':
+        service = YoutubeService()
+    elif category_name == 'blog':
+        service = BlogService()
+    elif category_name == 'url':
+        service = URLService()
+    else:
+        raise ValueError(f'Invalid category name : {category_name}')
+
+    # feeds = service.get_feeds()
+    context = {
+        'feeds' : service.get_feeds(),
+        'category' : category_name
+    }
+    # return render_template('/rss/feeds.html', feeds=feeds)
+    return render_template('/rss/feeds.html', **context)
+    
     # except Exception as e:
     #     logger.error(f'{str(e)}', exc_info=True)
     #     abort(422)

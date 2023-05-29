@@ -16,8 +16,9 @@
                 <div class="col-md-1"></div>
                 {% for source_category, count, names in row %}
                     <div class="col-md-3 category">
-                        <a href="{{ source_category.url }}">
-                            <img src="/static/image/source_categories/{{ source_category.name }}.png" height="150px" class="img img-responsive" alt=""></a>
+                        <a href="{{url_for('rss.get_feeds', category_name=source_category.name.lower())}}">
+                            <img src="/static/image/source_categories/{{ source_category.name }}.png" height="150px" class="img img-responsive" alt="">
+                        </a>
                         <div>
                             <span class="title">{{ source_category.name }}</span> ({{ count }})
                             <div class="text-muted small">{{ names | safe }}</div>

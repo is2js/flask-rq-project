@@ -2,7 +2,7 @@
 {% block main_content %}
 
     <div class="search-inputs">
-        <h1>Search video collector</h1>
+        <h1>{{category}} collection</h1>
         <input
                 name="search_text"
                 placeholder="Search for a video ..."
@@ -30,10 +30,10 @@
                     <div class="video search-result col-md-3 text-center">
                         <a href="{{ feed.url }}">
                             <img src="{{feed.thumbnail_url or url_for('static', filename='/image/source_categories/' + feed.source.source_category.name + '.png') }}"
-                                 class="img img-responsive {{ ' '.join(classes) }} img-fluid"
+                                 class="img img-responsive {{ ' '.join(classes) }}"
                                  alt="{{ feed.title }}"
                                  title="{{ feed.title }}"
-                                 height="100px"
+                                 height="130px"
                             >
                         </a>
                     </div>
