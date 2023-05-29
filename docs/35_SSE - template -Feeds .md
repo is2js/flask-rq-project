@@ -169,3 +169,5 @@
     
     {% block title %}Search @ Video Collector{% endblock %}
     ```
+    ![img.png](images/blog_feeds.png)
+    ![img_1.png](images/youtube_feeds.png)
