@@ -49,14 +49,14 @@ class SourceService:
             session.rollback()
             return False
 
-    def get_feeds(self):
+    def get_feeds(self, from_id=None):
         # SourceCategory 필터링
         source_category_name = self.get_source_category_name()
         # Source-target_url(Youtube, Blog) or name(URL) 및 Feed-category(Blog) 필터링
         target_info_for_filter = self.get_target_infos()
         display_numbers = self.get_display_numbers()
 
-        feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers)
+        feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers, from_id=from_id)
 
         return feeds
 
@@ -71,21 +71,36 @@ class SourceService:
     def get_display_numbers(self):
         raise NotImplementedError
 
-    def _get_feeds(self, source_category_name, target_infos, display_numbers):
+    def _get_feeds(self, source_category_name, target_infos, display_numbers, from_id=None):
         # cls별 개별 필터링 by source_category_name, target_info_for_filter
         filter_clause = self._create_feed_filter_clause(source_category_name, target_infos)
 
-        feeds = Feed.query \
+        # feeds = Feed.query \
+        #     .join(Source.feeds) \
+        #     .join(Source.source_category) \
+        #     .options(joinedload(Feed.source).joinedload(Source.source_category)) \
+        #     .filter(filter_clause) \
+        #     .order_by(Feed.published.desc()) \
+        #     .limit(display_numbers) \
+        #     .all()
+
+        query = Feed.query \
             .join(Source.feeds) \
             .join(Source.source_category) \
             .options(joinedload(Feed.source).joinedload(Source.source_category)) \
-            .filter(filter_clause) \
-            .order_by(Feed.published.desc()) \
-            .limit(display_numbers) \
-            .all()
+            .filter(filter_clause)
 
-        # 개별 카테고리별 front에 정순으로 줘야, 역순으로 끼워넣으니, 정순으로 다시 돌리기
-        feeds.sort(key=lambda f: f.published)
+        if from_id:
+            feeds = query.filter(Feed.id > from_id) \
+                .all()
+
+        else:
+            feeds = query.order_by(Feed.published.desc()) \
+                .limit(display_numbers) \
+                .all()
+
+            # 개별 카테고리별 front에 정순으로 줘야, 역순으로 끼워넣으니, 정순으로 다시 돌리기
+            feeds.sort(key=lambda f: f.published)
 
         return feeds
 
@@ -111,7 +126,6 @@ class SourceService:
     @abstractmethod
     def get_target_filter_clause(self, target_infos):
         raise NotImplementedError
-
 
     def render(self, title_level=SourceConfig.TITLE_LEVEL):
         # updated_at = pytz.timezone('Asia/Seoul').localize(datetime.now())

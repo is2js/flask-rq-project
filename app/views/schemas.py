@@ -81,5 +81,8 @@ class FeedListResponseSchema(ResponseSchema):
 
     @pre_dump
     def compute_count(self, data, **kwargs):
-        data['count'] = len(data['data']['feeds'])
+        if data.get('data'):
+            data['count'] = len(data['data']['feeds'])
+        else:
+            data['count'] = 0
         return data

@@ -13,10 +13,10 @@ rss_bp = Blueprint('rss', __name__, url_prefix='/rss')
 
 
 class FeedListView(BaseView):
-    # @use_kwargs({'from_id': fields.Int(required=True, data_key='fromId')}, location='query')
-    # @use_kwargs(RoomListRequestSchema, location='query')
+    # @use_kwargs(FeedListRequestSchema, location='query')
+    @use_kwargs({'from_id': fields.Int(data_key='fromId')}, location='query')
     @marshal_with(FeedListResponseSchema)
-    def get(self):
+    def get(self, from_id):
         try:
             feeds = []
             for service in get_current_services():
@@ -38,9 +38,10 @@ class FeedListView(BaseView):
 
 
 class CategoryFeedListView(BaseView):
+    @use_kwargs({'from_id': fields.Int(data_key='fromId')}, location='query')
     @marshal_with(FeedListResponseSchema)
     # path 파라미터는 @use_kwargs사용없이 인자로 바로 받는다.
-    def get(self, category_name):
+    def get(self, category_name, from_id):
         try:
             if category_name == 'youtube':
                 service = YoutubeService()
@@ -50,11 +51,17 @@ class CategoryFeedListView(BaseView):
                 service = URLService()
             else:
                 raise ValueError(f'Invalid category name : {category_name}')
+
+            if from_id:
+                feeds = service.get_feeds(from_id=from_id)
+            else:
+                feeds = service.get_feeds()
+
             response = {
                 'result_code': 'S-1',
                 'message': f'{category_name}의 피드들 조회 성공',
                 'data': {
-                    'feeds': service.get_feeds(),
+                    'feeds': feeds,
                 },
                 'category': category_name
             }

@@ -64,20 +64,24 @@
 </script>
 
 <script>
+    const Feed__elCategorySpan = document.querySelector('.feed__category-span');
+    const Feed__elCountSpan = document.querySelector('.feed__count-span');
+    const Feed__elFeedsBox = document.querySelector('.feed__feeds-box');
+
+    let Feed__lastLoadedId = 0;
+
     function Feed__loadMore(category) {
+        // fetchGet("/rss/feeds", {}).then(body => {
         let url = `/rss/category/${category}`;
 
-        // fetchGet("/rss/feeds", {}).then(body => {
-        fetchGet(url, {}).then(body => {
+        // fetchGet(url, {}).then(body => {
+        fetchGet(url, {fromId: Feed__lastLoadedId}).then(body => {
             Feed__drawCategory(body.category);
             Feed__drawCount(body.count);
             Feed__drawFeeds(body.data.feeds);
         })
     }
 
-    const Feed__elCategorySpan = document.querySelector('.feed__category-span');
-    const Feed__elCountSpan = document.querySelector('.feed__count-span');
-    const Feed__elFeedsBox = document.querySelector('.feed__feeds-box');
 
     function Feed__drawCategory(category) {
         Feed__elCategorySpan.textContent = category;
@@ -90,6 +94,11 @@
 
     function Feed__drawFeeds(feeds) {
         console.log(feeds)
+
+        if (feeds.length > 0) {
+            Feed__lastLoadedId = feeds[feeds.length - 1].id;
+        }
+
         feeds.forEach((feed) => {
             Feed__elFeedsBox.insertAdjacentHTML(
                 "afterBegin",
