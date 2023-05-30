@@ -16,6 +16,8 @@
             hx-target="#search-results"
             hx-push-url="true">
 
+    <button onclick="a()"></button>
+
 </div>
 
 <div class="videos search-results" id="search-results">
@@ -118,5 +120,12 @@
     // Feed__loadMore();
     // category가 안넘어오는 전체feed조회에서는 'all'로 들어가서, 전체조회view에 드간다.
     Feed__loadMore(`{{category or 'all'}}`);
+
+
+    const sse = new EventSource("/sse?channel={{category or 'all' }}");
+    sse.addEventListener("feed__{{category or 'all'}}Added", e =>{
+        console.log(e)
+        Feed__loadMore(`{{category or 'all'}}`);
+    })
 </script>
 {% endblock %}

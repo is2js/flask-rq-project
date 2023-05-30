@@ -11,5 +11,8 @@ mail = Mail()
 r = redis.Redis.from_url(Config.REDIS_URL)
 queue = Queue(connection=r)
 
-
 docs = FlaskApiSpec()
+
+from app.sse import ServerSentEventService
+
+sse = ServerSentEventService(r)

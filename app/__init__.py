@@ -3,18 +3,16 @@ from datetime import timedelta, datetime
 import jinja_partials
 from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
-from flask import Flask
-
+from flask import Flask, request, Response, stream_with_context
 
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from app.config import Config
-from .extentions import docs
+from .extentions import docs, sse
 
 from .templates.filters import remain_from_now
-
 
 # engine = create_engine("sqlite:///db.sqlite", pool_size=1, max_overflow=0) # default 5, 10
 engine = create_engine(Config.DATABASE_URL, **Config.SQLALCHEMY_POOL_OPTIONS)
@@ -32,6 +30,7 @@ naming_convention = {
 }
 
 Base.metadata = MetaData(naming_convention=naming_convention)
+
 
 def create_app():
     app = Flask(__name__)
@@ -55,6 +54,26 @@ def create_app():
     app.register_blueprint(rq_dashboard.blueprint, url_prefix="/rqdashboard")
     app.register_blueprint(rq_scheduler_dashboard.blueprint, url_prefix="/rqschedulerdashboard")
 
+    # sse route
+    @app.route('/sse')
+    def sse_connect():
+        channel = request.args.get('channel')
+        # print("channel>>>", channel)
+
+        return Response(
+            stream_with_context(sse.stream(channel=channel)),
+            mimetype="text/event-stream",
+            headers={
+                'Cache-Control': 'no-cache',
+                'Transfer-Encoding': 'chunked',
+            })
+
+    @app.route('/sse_test/<channel>')
+    def sse_test(channel):
+        sse.publish(f'feed__{channel}Added', channel=channel)
+        return 'success'
+
+
     # scehduler task
     from app import tasks
     tasks.init_app(app)
@@ -71,6 +90,7 @@ def create_app():
         ),
         'APISPEC_SWAGGER_URL': '/swagger/'  # swagger 자체 정보 url
     })
+
     # cors.init_app(app)
 
     @app.shell_context_processor
