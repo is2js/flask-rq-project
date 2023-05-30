@@ -1,0 +1,20 @@
+
+<div class="row search-result-row">
+    <div class="col-md-2"></div>
+    <div class="video search-result col-md-3 text-center">
+        <a href="{{ feed.url }}">
+            <img src="{{feed.thumbnail_url or url_for('static', filename='/image/source_categories/' + feed.source.source_category.name + '.png') }}"
+                 class="img img-responsive {{ ' '.join(classes) }}"
+                 alt="{{ feed.title }}"
+                 title="{{ feed.title }}"
+                 height="130px"
+            >
+        </a>
+    </div>
+    <div class="video search-result col-md-6 my-auto">
+        <div><a href="{{ feed.url }}" class="h5 font-weight-bold">{{ feed.title }}</a></div>
+        <div><span class="author">{{ feed.source.target_name }}</span></div>
+        <div>{{ feed.published_string }} views</div>
+    </div>
+    <div class="col-md-1"></div>
+</div>

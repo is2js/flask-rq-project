@@ -1,55 +1,122 @@
 {% extends "shared/_layout.html" %}
 {% block main_content %}
 
-    <div class="search-inputs">
-        <h1>{{category}} collection</h1>
-        <input
-                name="search_text"
-                placeholder="Search for a video ..."
-                class="form-control"
-                type="text"
-                value="{{ search_text or '' }}"
-                hx-get="/videos/search"
-                hx-trigger="keyup changed delay:250ms"
-                hx-target="#search-results"
-                hx-push-url="true">
+<div class="search-inputs">
+    <h1>
+        <span class="feed__category-span"></span> collection
+    </h1>
+    <input
+            name="search_text"
+            placeholder="Search for a video ..."
+            class="form-control"
+            type="text"
+            value="{{ search_text or '' }}"
+            hx-get="/videos/search"
+            hx-trigger="keyup changed delay:250ms"
+            hx-target="#search-results"
+            hx-push-url="true">
+
+</div>
+
+<div class="videos search-results" id="search-results">
+    <div class="search-result-count">
+        <span class="feed__count-span"></span> results
+    </div>
+    <div class="container feed__feeds-box">
 
     </div>
+</div>
 
-    <div class="videos search-results" id="search-results">
+{% endblock %}
 
-<!--        {% if search_text %}-->
-<!--            {{  render_partial('videos/partials/search_results.html', videos=videos) }}-->
-<!--        {% endif %}-->
-        <div class="search-result-count">{{ feeds | length }} results</div>
-        <div class="container">
-            {% for feed in feeds %}
-                {% if feed %}
-                <div class="row search-result-row">
+{% block title %}Search @ Video Collector{% endblock %}
+
+{% block additional_js %}
+<script>
+    function fetchPost(url, data) {
+        return fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify(data),
+        })
+            .then(response => response.json())
+    }
+
+    function fetchGet(url, data) {
+        let query = Object.keys(data)
+            .map(k => encodeURIComponent(k) + '=' + encodeURIComponent(data[k]))
+            .join('&');
+
+        return fetch(url + "?" + query, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        })
+            .then(response => response.json())
+    }
+</script>
+
+<script>
+    function Feed__loadMore(category) {
+        let url = `/rss/category/${category}`;
+
+        // fetchGet("/rss/feeds", {}).then(body => {
+        fetchGet(url, {}).then(body => {
+            Feed__drawCategory(body.category);
+            Feed__drawCount(body.count);
+            Feed__drawFeeds(body.data.feeds);
+        })
+    }
+
+    const Feed__elCategorySpan = document.querySelector('.feed__category-span');
+    const Feed__elCountSpan = document.querySelector('.feed__count-span');
+    const Feed__elFeedsBox = document.querySelector('.feed__feeds-box');
+
+    function Feed__drawCategory(category) {
+        Feed__elCategorySpan.textContent = category;
+    }
+    function Feed__drawCount(count) {
+        // Feed__elCountSpan.textContent = count;
+        const currentCount = +Feed__elCountSpan.textContent || 0;
+        Feed__elCountSpan.textContent = currentCount + count;
+    }
+
+    function Feed__drawFeeds(feeds) {
+        console.log(feeds)
+        feeds.forEach((feed) => {
+            Feed__elFeedsBox.insertAdjacentHTML(
+                "afterBegin",
+                `<div class="row search-result-row">
                     <div class="col-md-2"></div>
                     <div class="video search-result col-md-3 text-center">
-                        <a href="{{ feed.url }}">
-                            <img src="{{feed.thumbnail_url or url_for('static', filename='/image/source_categories/' + feed.source.source_category.name + '.png') }}"
+                        <a href="${feed.url}">
+                            <img src="${feed.thumbnailUrl || window.location.origin + '/static/image/source_categories/' + feed.source.sourceCategory.name + '.png'}"
                                  class="img img-responsive {{ ' '.join(classes) }}"
-                                 alt="{{ feed.title }}"
-                                 title="{{ feed.title }}"
+                                 alt="${feed.title}"
+                                 title="${feed.title}"
                                  height="130px"
                             >
                         </a>
                     </div>
                     <div class="video search-result col-md-6 my-auto">
-                            <div><a href="{{ feed.url }}" class="h5 font-weight-bold">{{ feed.title }}</a></div>
-                            <div><span class="author">{{ feed.source.target_name }}</span></div>
-                            <div>{{ feed.published_string }} views</div>
+                        <div><a href="${feed.url}" class="h5 font-weight-bold">${feed.title}</a></div>
+                        <div><span class="author">${feed.source.targetName}</span></div>
+                        <div>${feed.publishedString}</div>
                     </div>
                     <div class="col-md-1"></div>
                 </div>
-                {% endif%}
-            {% endfor %}
-        </div>
+    `
+            );
+        });
+    }
 
-    </div>
-
+    // Feed__loadMore();
+    // category가 안넘어오는 전체feed조회에서는 'all'로 들어가서, 전체조회view에 드간다.
+    Feed__loadMore(`{{category or 'all'}}`);
+</script>
 {% endblock %}
-
-{% block title %}Search @ Video Collector{% endblock %}

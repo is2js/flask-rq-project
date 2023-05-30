@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, render_template, abort
-from flask_apispec import marshal_with
+from flask_apispec import marshal_with, use_kwargs
+from marshmallow import fields
 
 from app import docs
 from app.models import SourceCategory
@@ -21,16 +22,46 @@ class FeedListView(BaseView):
             for service in get_current_services():
                 feeds += service.get_feeds()
 
+            # 통합feeds를 published 정순으로 정렬
+            feeds.sort(key=lambda feed:feed.published)
+
             response = {
                 'result_code': 'S-1',
-                'message': '채팅방 조회 성공',
+                'message': '피드 조회 성공',
                 'data': {'feeds': feeds},
+                'category' : 'All',
             }
 
             return response
         except Exception as e:
             return {'result_code': 400, 'message': str(e)}
 
+
+class CategoryFeedListView(BaseView):
+    @marshal_with(FeedListResponseSchema)
+    # path 파라미터는 @use_kwargs사용없이 인자로 바로 받는다.
+    def get(self, category_name):
+        try:
+            if category_name == 'youtube':
+                service = YoutubeService()
+            elif category_name == 'blog':
+                service = BlogService()
+            elif category_name == 'url':
+                service = URLService()
+            else:
+                raise ValueError(f'Invalid category name : {category_name}')
+            response = {
+                'result_code': 'S-1',
+                'message': f'{category_name}의 피드들 조회 성공',
+                'data': {
+                    'feeds': service.get_feeds(),
+                },
+                'category': category_name
+            }
+
+            return response
+        except Exception as e:
+            return {'result_code': 400, 'message': str(e)}
 
 @rss_bp.errorhandler(422)
 def error_handler(err):
@@ -45,7 +76,8 @@ def error_handler(err):
         return jsonify({'message': messages}), 400
 
 
-FeedListView.register(rss_bp, docs, '/feeds', 'feedlistview')
+FeedListView.register(rss_bp, docs, '/category/all', 'feedlistview')
+CategoryFeedListView.register(rss_bp, docs, '/category/<category_name>', 'categoryfeedlistview')
 
 
 @rss_bp.route('/categories')
@@ -73,24 +105,23 @@ def get_all_feeds():
 
 @rss_bp.route('/categories/<category_name>')
 def get_feeds(category_name):
-    # service_list = get_current_services()
-    if category_name == 'youtube':
-        service = YoutubeService()
-    elif category_name == 'blog':
-        service = BlogService()
-    elif category_name == 'url':
-        service = URLService()
-    else:
-        raise ValueError(f'Invalid category name : {category_name}')
+    # if category_name == 'youtube':
+    #     service = YoutubeService()
+    # elif category_name == 'blog':
+    #     service = BlogService()
+    # elif category_name == 'url':
+    #     service = URLService()
+    # else:
+    #     raise ValueError(f'Invalid category name : {category_name}')
 
     # feeds = service.get_feeds()
     context = {
-        'feeds' : service.get_feeds(),
+        # 'feeds' : service.get_feeds(),
         'category' : category_name
     }
-    # return render_template('/rss/feeds.html', feeds=feeds)
+
     return render_template('/rss/feeds.html', **context)
-    
+
     # except Exception as e:
     #     logger.error(f'{str(e)}', exc_info=True)
     #     abort(422)

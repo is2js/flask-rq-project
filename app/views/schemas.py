@@ -2,6 +2,39 @@ from marshmallow import Schema, fields, pre_dump
 
 
 #### DOMAIN
+class SourceCategorySchema(Schema):
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False, unique=True, index=True)
+    """
+    id = fields.Integer(dump_only=True)
+    name = fields.String(required=True)
+
+
+class SourceSchema(Schema):
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Text, nullable=False)  # 사용자입력 NAME ex> Tistory, Naver, 유튜브, 왓챠
+    url = db.Column(db.Text, nullable=False)
+    target_name = db.Column(db.Text, nullable=False)  # RSS타겟 NAME ex> xxx님의 blog, 쌍보네TV
+    target_url = db.Column(db.Text, nullable=False, index=True, unique=True)
+
+    source_category_id = db.Column(db.Integer, db.ForeignKey('sourcecategory.id', ondelete="CASCADE"))
+    source_category = relationship('SourceCategory', foreign_keys=[source_category_id], back_populates='sources',
+                                   uselist=False)
+
+    feeds = relationship('Feed', back_populates='source', cascade='all, delete-orphan')
+    """
+    id = fields.Integer(dump_only=True)
+    name = fields.String(required=True)
+    url = fields.String(required=True)
+    target_name = fields.String(required=True, data_key='targetName')
+    target_url = fields.String(required=True, data_key='targetUrl')
+    thumbnail_url = fields.String(data_key='thumbnailUrl')
+
+    source_category = fields.Nested(SourceCategorySchema(), data_key='sourceCategory')
+
+
 class FeedSchema(Schema):
     """
     class Feed(BaseModel):
@@ -20,14 +53,15 @@ class FeedSchema(Schema):
     id = fields.Integer(dump_only=True)
     title = fields.String(required=True)
     url = fields.String(required=True)
-    thumbnail_url = fields.String()
+    thumbnail_url = fields.String(data_key='thumbnailUrl')
     category = fields.String()
     body = fields.String()
 
     # published = fields.DateTime(dump_only=True, format="%Y-%m-%d %H:%M:%S", timezone="Asia/Seoul")
-    published_string = fields.String(dump_only=True)
+    published_string = fields.String(dump_only=True, data_key='publishedString')
 
-    source_id = fields.Integer(required=True)
+    # source_id = fields.Integer(required=True)
+    source = fields.Nested(SourceSchema())
 
 
 #### RESPONSE
@@ -41,10 +75,11 @@ class FeedListResponseSchema(ResponseSchema):
         values=fields.Nested(FeedSchema(), many=True, data_key="feeds")
     )
 
-    count = fields.Integer()
+    count = fields.Integer(dump_only=True)
+
+    category = fields.Str(dump_only=True)
 
     @pre_dump
     def compute_count(self, data, **kwargs):
         data['count'] = len(data['data']['feeds'])
         return data
-

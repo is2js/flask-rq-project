@@ -1,32 +1,46 @@
 {% extends "shared/_layout.html" %}
 {% block main_content %}
 
-    <div class="hero">
-        <div class="hero-inner">
-            <h1>RSS Collector</h1>
-            <h2>Youtube, Blog, URL까지! - 나만의 <span class="yahoo">RSS Collector</span>를 만들 수 있다.</h2>
-        </div>
-
+<div class="hero">
+    <div class="hero-inner">
+        <h1>RSS Collector</h1>
+        <h2>Youtube, Blog, URL까지! - 나만의 <span class="yahoo">RSS Collector</span>를 만들 수 있다.</h2>
     </div>
 
+</div>
 
-    <div class="container categories">
-        {% for row in rows %}
-            <div class="row">
-                <div class="col-md-1"></div>
-                {% for source_category, count, names in row %}
-                    <div class="col-md-3 category">
-                        <a href="{{url_for('rss.get_feeds', category_name=source_category.name.lower())}}">
-                            <img src="/static/image/source_categories/{{ source_category.name }}.png" height="150px" class="img img-responsive" alt="">
-                        </a>
-                        <div>
-                            <span class="title">{{ source_category.name }}</span> ({{ count }})
-                            <div class="text-muted small">{{ names | safe }}</div>
-                        </div>
-                    </div>
-                {% endfor %}
+
+<div class="container categories">
+    {% for row in rows %}
+    <div class="row">
+        <div class="col-md-1"></div>
+        {% for source_category, count, names in row %}
+        <div class="col-md-3 category">
+            <a href="{{url_for('rss.get_feeds', category_name=source_category.name.lower())}}">
+                <img src="/static/image/source_categories/{{ source_category.name }}.png" height="150px"
+                     class="img img-responsive" alt="">
+            </a>
+            <div>
+                <span class="title">{{ source_category.name }}</span> ({{ count }})
+                <div class="text-muted small">{{ names | safe }}</div>
             </div>
+        </div>
         {% endfor %}
     </div>
+    {% endfor %}
+
+    <div class="row">
+        <div class="col-md-5"></div>
+        <div class="col-md-2 category">
+            <a href="{{url_for('rss.get_feeds', category_name='all')}}">
+                <img src="/static/image/source_categories/total.png" height="70px" class="img img-responsive" alt="">
+            </a>
+            <div>
+                <span class="title">전체 Feed</span>
+            </div>
+        </div>
+        <div class="col-md-5"></div>
+    </div>
+</div>
 
 {% endblock %}

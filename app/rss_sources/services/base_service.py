@@ -83,6 +83,10 @@ class SourceService:
             .order_by(Feed.published.desc()) \
             .limit(display_numbers) \
             .all()
+
+        # 개별 카테고리별 front에 정순으로 줘야, 역순으로 끼워넣으니, 정순으로 다시 돌리기
+        feeds.sort(key=lambda f: f.published)
+
         return feeds
 
     def _create_feed_filter_clause(self, source_category_name, target_infos):
