@@ -14,22 +14,22 @@ rss_bp = Blueprint('rss', __name__, url_prefix='/rss')
 
 class FeedListView(BaseView):
     # @use_kwargs(FeedListRequestSchema, location='query')
-    @use_kwargs({'from_id': fields.Int(data_key='fromId')}, location='query')
+    @use_kwargs({'since': fields.Float(data_key='since')}, location='query')
     @marshal_with(FeedListResponseSchema)
-    def get(self, from_id):
+    def get(self, since):
         try:
             feeds = []
             for service in get_current_services():
-                feeds += service.get_feeds()
+                feeds += service.get_feeds(since=since)
 
             # 통합feeds를 published 정순으로 정렬
-            feeds.sort(key=lambda feed:feed.published)
+            feeds.sort(key=lambda feed: feed.published)
 
             response = {
                 'result_code': 'S-1',
                 'message': '피드 조회 성공',
                 'data': {'feeds': feeds},
-                'category' : 'All',
+                'category': 'All',
             }
 
             return response
@@ -38,10 +38,10 @@ class FeedListView(BaseView):
 
 
 class CategoryFeedListView(BaseView):
-    @use_kwargs({'from_id': fields.Int(data_key='fromId')}, location='query')
+    @use_kwargs({'since': fields.Float(data_key='since')}, location='query')
     @marshal_with(FeedListResponseSchema)
     # path 파라미터는 @use_kwargs사용없이 인자로 바로 받는다.
-    def get(self, category_name, from_id):
+    def get(self, category_name, since):
         try:
             if category_name == 'youtube':
                 service = YoutubeService()
@@ -52,10 +52,10 @@ class CategoryFeedListView(BaseView):
             else:
                 raise ValueError(f'Invalid category name : {category_name}')
 
-            if from_id:
-                feeds = service.get_feeds(from_id=from_id)
-            else:
-                feeds = service.get_feeds()
+            feeds = service.get_feeds(since=since)
+
+            # 역순으로 조회한 것을 정순 정렬 for front
+            feeds.sort(key=lambda f: f.published_timestamp)
 
             response = {
                 'result_code': 'S-1',
@@ -69,6 +69,7 @@ class CategoryFeedListView(BaseView):
             return response
         except Exception as e:
             return {'result_code': 400, 'message': str(e)}
+
 
 @rss_bp.errorhandler(422)
 def error_handler(err):
@@ -124,7 +125,7 @@ def get_feeds(category_name):
     # feeds = service.get_feeds()
     context = {
         # 'feeds' : service.get_feeds(),
-        'category' : category_name
+        'category': category_name
     }
 
     return render_template('/rss/feeds.html', **context)
@@ -132,7 +133,6 @@ def get_feeds(category_name):
     # except Exception as e:
     #     logger.error(f'{str(e)}', exc_info=True)
     #     abort(422)
-
 
 # @rss_bp.route('/main')
 # def get_categories():

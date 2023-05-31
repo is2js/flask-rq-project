@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from datetime import datetime, timezone
 
 import pytz
 from sqlalchemy.orm import joinedload
@@ -49,14 +50,14 @@ class SourceService:
             session.rollback()
             return False
 
-    def get_feeds(self, from_id=None):
+    def get_feeds(self, since=None):
         # SourceCategory 필터링
         source_category_name = self.get_source_category_name()
         # Source-target_url(Youtube, Blog) or name(URL) 및 Feed-category(Blog) 필터링
         target_info_for_filter = self.get_target_infos()
         display_numbers = self.get_display_numbers()
 
-        feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers, from_id=from_id)
+        feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers, since=since)
 
         return feeds
 
@@ -71,7 +72,7 @@ class SourceService:
     def get_display_numbers(self):
         raise NotImplementedError
 
-    def _get_feeds(self, source_category_name, target_infos, display_numbers, from_id=None):
+    def _get_feeds(self, source_category_name, target_infos, display_numbers, since=None):
         # cls별 개별 필터링 by source_category_name, target_info_for_filter
         filter_clause = self._create_feed_filter_clause(source_category_name, target_infos)
 
@@ -90,8 +91,9 @@ class SourceService:
             .options(joinedload(Feed.source).joinedload(Source.source_category)) \
             .filter(filter_clause)
 
-        if from_id:
-            feeds = query.filter(Feed.id > from_id) \
+        if since:
+            since = datetime.fromtimestamp(since)
+            feeds = query.filter(Feed.published > since) \
                 .all()
 
         else:
@@ -99,9 +101,8 @@ class SourceService:
                 .limit(display_numbers) \
                 .all()
 
-            # 개별 카테고리별 front에 정순으로 줘야, 역순으로 끼워넣으니, 정순으로 다시 돌리기
-            feeds.sort(key=lambda f: f.published)
-
+        # 개별 카테고리별 front에 정순으로 줘야, 역순으로 끼워넣으니, 정순으로 다시 돌리기 -> 외부에서 통합해서 정렬하도록 뺌
+        # feeds.sort(key=lambda f: f.published)
         return feeds
 
     def _create_feed_filter_clause(self, source_category_name, target_infos):

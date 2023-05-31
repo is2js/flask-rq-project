@@ -89,7 +89,7 @@ def _get_feeds(self, source_category_name, target_infos, display_numbers, from_i
         console.log(feeds)
     
         if (feeds.length > 0) {
-            Feed__lastLoadedId = feeds[feeds.length - 1].id;
+            Feed__since = feeds[feeds.length - 1].id;
         }
     
         feeds.forEach((feed) => {

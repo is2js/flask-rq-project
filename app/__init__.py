@@ -70,9 +70,19 @@ def create_app():
 
     @app.route('/sse_test/<channel>')
     def sse_test(channel):
+        source = Source.get_or_create(**{'target_url': 'https://www.youtube.com/channel/UC-lgoofOVXSoOdRf5Ui9TWw'},
+                                      get_key='target_url')
+
+        from .models import Feed
+
+        feed = Feed(title='test', url='test', category='test', body='test',
+                    thumbnail_url='https://i2.ytimg.com/vi/1j3wGl06pUs/hqdefault.jpg',
+                    published=datetime.utcnow(),
+                    source=source
+                    )
+        feed.save()
         sse.publish(f'feed__{channel}Added', channel=channel)
         return 'success'
-
 
     # scehduler task
     from app import tasks

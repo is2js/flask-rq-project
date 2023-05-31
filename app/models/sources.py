@@ -1,4 +1,5 @@
 from sqlalchemy import func, and_, or_, case
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, joinedload
 
 from .base import BaseModel, db, transaction
@@ -85,3 +86,7 @@ class Feed(BaseModel):
 
     source_id = db.Column(db.Integer, db.ForeignKey('source.id', ondelete="CASCADE"))
     source = relationship('Source', foreign_keys=[source_id], back_populates='feeds', uselist=False)
+
+    @property
+    def published_timestamp(self):
+        return self.published.timestamp() if self.published else None

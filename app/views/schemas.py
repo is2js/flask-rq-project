@@ -63,6 +63,13 @@ class FeedSchema(Schema):
     # source_id = fields.Integer(required=True)
     source = fields.Nested(SourceSchema())
 
+    published_timestamp = fields.Method("get_published_timestamp", data_key='publishedTimestamp')
+
+    def get_published_timestamp(self, obj):
+        # obj는 직렬화할 Feed 인스턴스입니다.
+        # @property로 정의해놓은 published_timestamp 값을 반환합니다.
+        return obj.published_timestamp
+
 
 #### RESPONSE
 class ResponseSchema(Schema):
