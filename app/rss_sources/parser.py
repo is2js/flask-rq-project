@@ -4,8 +4,13 @@ from time import mktime
 import feedparser
 import pytz
 from bs4 import BeautifulSoup
+from dateutil.parser import parser
 
 from app.rss_sources.utils import parse_logger
+
+
+def _has_tz(published_parsed):
+    return parser.parse(str(published_parsed)) is not None
 
 
 class RssParser(object):
@@ -49,11 +54,15 @@ class RssParser(object):
 
             data['body'] = _get_text_body(entry)
 
-            # published_parsed + mktime + fromtimestamp + pytz
-            utc_published = time_struct_to_utc_datetime(entry.get("published_parsed"))
+            # 기존) published_parsed + mktime + fromtimestamp + pytz
+            # utc_published = time_struct_to_utc_datetime(entry.get("published_parsed"))
+            # data['published'] = utc_published
+            # kst_published = utc_to_local(utc_published)
+            # data['published_string'] = kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")
+
+            # new)
+            utc_published, kst_published = str_time_to_utc_and_kst(entry.get("published"))
             data['published'] = utc_published
-            # 출력용
-            kst_published = utc_to_local(utc_published)
             data['published_string'] = kst_published.strftime("%Y년 %m월 %d일 %H시 %M분 %S초")
 
             yield data
@@ -77,6 +86,49 @@ def time_struct_to_utc_datetime(published_parsed):
 
     utc_datetime = pytz.utc.localize(naive_datetime)  # utc aware [필수]
     return utc_datetime
+
+
+def str_time_to_utc_and_kst(published):
+    if not published:
+        return None
+
+    kst_tz = pytz.timezone("Asia/Seoul")
+
+    # UTC로 변환
+    # 1) string에 GMT 나 +0000 or +0900은 tzinfo가 있는 것이다.
+    # => aware utc로 변환한다.
+    # => GMT의 경우, 이미 tzinfo가 있으므로 utc로 replace해준다.
+    # => tz를 가진 naive datetime의 경우, astimezone()으로 utc를 지정해준다.
+    # if published.endswith("GMT"):
+    #     utc_dt = datetime.strptime(published, "%a, %d %b %Y %H:%M:%S GMT")
+    #     utc_dt = utc_dt.replace(tzinfo=pytz.UTC)
+    #     kst_dt = utc_dt.astimezone(kst_tz)
+    # elif "T" in published:
+    #     utc_dt = datetime.strptime(published, "%Y-%m-%dT%H:%M:%S%z")
+    #     utc_dt = utc_dt.astimezone(pytz.UTC)
+    #     kst_dt = utc_dt.astimezone(kst_tz)
+    # else :
+    #     utc_dt = datetime.strptime(published, "%a, %d %b %Y %H:%M:%S %z")
+    #     utc_dt = utc_dt.astimezone(pytz.UTC)
+    #     # KST로 변환
+    #     kst_dt = utc_dt.astimezone(kst_tz)
+
+    # 1) GMT or +를 포함하여 tz정보가 있다면 -> utc로 만들고, kst도 만든다.
+    date_parser = parser()
+    if published.endswith("GMT") or "+" in published:
+        utc_dt = date_parser.parse(published)
+        # ValueError: Not naive datetime (tzinfo is already set)
+        # utc_dt = pytz.UTC.localize(utc_dt)
+        utc_dt = utc_dt.astimezone(pytz.UTC)
+        kst_dt = utc_dt.astimezone(kst_tz)
+
+
+    # 1) GMT or +가 없다면 kst로 취급하여 먼저 만들고, utc로 변환한다
+    else:
+        kst_dt = kst_tz.localize(date_parser.parse(published))
+        utc_dt = kst_dt.astimezone(pytz.UTC)
+
+    return utc_dt, kst_dt
 
 
 def utc_to_local(utc_datetime, zone='Asia/Seoul'):

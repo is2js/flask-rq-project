@@ -70,18 +70,23 @@ def create_app():
 
     @app.route('/sse_test/<channel>')
     def sse_test(channel):
-        source = Source.get_or_create(**{'target_url': 'https://www.youtube.com/channel/UC-lgoofOVXSoOdRf5Ui9TWw'},
-                                      get_key='target_url')
+        # 특정 Source(Youtbue)를 찾고 -> test Feed를 utcnow()로 만들어서, 직전까지 업뎃된 것보다 최근 것 1개를 만든다.
+        source = Source.get_or_create(
+            **{'target_url': 'https://www.youtube.com/channel/UC-lgoofOVXSoOdRf5Ui9TWw'},
+            get_key='target_url'
+        )
 
         from .models import Feed
-
         feed = Feed(title='test', url='test', category='test', body='test',
                     thumbnail_url='https://i2.ytimg.com/vi/1j3wGl06pUs/hqdefault.jpg',
                     published=datetime.utcnow(),
                     source=source
                     )
         feed.save()
+
+        # front에 업데 신호를 준다.
         sse.publish(f'feed__{channel}Added', channel=channel)
+
         return 'success'
 
     # scehduler task

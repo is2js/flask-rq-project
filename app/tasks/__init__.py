@@ -70,9 +70,10 @@ def init_app(app):
             scheduled_time=datetime.now(),
             task_func=print, args=['scheduler work...1'], kwargs={},
             description='test',
-            interval=timedelta(seconds=30), #repeat=4,
+            interval=timedelta(seconds=30),  # repeat=4,
             timeout=timedelta(minutes=10),
         ),
+
         dict(
             scheduled_time=datetime.now(),
             task_func=print, args=['scheduler work...2'], kwargs={},
@@ -103,12 +104,12 @@ def init_app(app):
         #     timeout=timedelta(minutes=10),
         # ),
         # 3시간마다 rss 패치
-    #     dict(
-    #         cron_string="0 */3 * * *",  # 분|시|(매달)일|월|(매주)요일(1=월요일)
-    #         task_func=fetch_rss, args=[], kwargs={},
-    #         description='fetch_rss',
-    #         timeout=timedelta(minutes=5),
-    #     ),
+        #     dict(
+        #         cron_string="0 */3 * * *",  # 분|시|(매달)일|월|(매주)요일(1=월요일)
+        #         task_func=fetch_rss, args=[], kwargs={},
+        #         description='fetch_rss',
+        #         timeout=timedelta(minutes=5),
+        #     ),
     ]
 
     scheduler_service = SchedulerService()

@@ -137,3 +137,20 @@
 
 ### 추가 테스트
 1. `/sse_test/<channel>`라우트에 event를 보낼 때, 해당 category의 feed를 추가해서 1개가 추가되는지 확인하자.
+    ```python
+    @app.route('/sse_test/<channel>')
+    def sse_test(channel):
+        # 특정 Source(Youtbue)를 찾고 -> test Feed를 utcnow()로 만들어서, 직전까지 업뎃된 것보다 최근 것 1개를 만든다.
+        source = Source.get_or_create(
+            **{'target_url': 'https://www.youtube.com/channel/UC-lgoofOVXSoOdRf5Ui9TWw'},
+            get_key='target_url'
+        )
+
+        from .models import Feed
+        feed = Feed(title='test', url='test', category='test', body='test',
+                    thumbnail_url='https://i2.ytimg.com/vi/1j3wGl06pUs/hqdefault.jpg',
+                    published=datetime.utcnow(),
+                    source=source
+                    )
+        feed.save()
+    ```
