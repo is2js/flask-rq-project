@@ -3,6 +3,7 @@ from functools import wraps
 from rq import get_current_job
 
 from app.models import Task, Notification
+from app.models.tasks import ScheduledTaskInstance, ScheduledTask
 from app.utils import logger
 
 
@@ -87,3 +88,33 @@ def background_task(f):
 
     return task_handler
 
+
+def scheduled_task(f):
+    @wraps(f)
+    def task_handler(*args, **kwargs):
+        job = get_current_job()  # 부모의 job이 잡힌다.
+
+        parent_task = ScheduledTask.query.filter_by(job_id=job.id).first()
+        child_task = ScheduledTaskInstance(
+            name=parent_task.name,
+            parent=parent_task,
+        ).save()
+        try:
+            f(*args, **kwargs)
+
+            child_task.update(
+                status='finished',
+            )
+
+        except Exception as e:
+            logger.error(str(e), exc_info=True)
+            child_task.update(
+                failed=True,
+                status='finished',
+                log=f'Failed for: ' + str(e)
+            )
+        finally:
+            if child_task.failed:
+                parent_task.update(status='failed')
+
+    return task_handler

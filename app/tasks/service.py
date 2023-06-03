@@ -242,12 +242,6 @@ class SchedulerService(TaskBase):
         if not description:
             raise ValueError('Description required to schedule job')
 
-        # DB 연동
-        # task = self.model.create(session, name=task_func.__name__, description=description,
-        #                          status='reserved', reserved_at=scheduled_time)
-        # try:
-
-        # job = self.asyncScheduler.schedule(
         job = self.asyncScheduler.schedule(
             datetime_to_utc(scheduled_time),  # scheduled_time=datetime.now().astimezone(utc),
             task_func,
@@ -259,8 +253,18 @@ class SchedulerService(TaskBase):
             result_ttl=result_ttl,
             repeat=repeat,
             timeout=timeout,
-            # id=str(random.randint(1, 10)) #
+            # id= #
         )
+
+        # DB 연동
+        self.model.get_or_create(**{
+            'job_id': job.id,
+            'type': 'schedule',
+            'name': task_func.__name__,
+            'description': description,
+            'args': args,
+            'kwargs': kwargs,
+        })
 
         # 작업 상태 확인
         # print(job.id)
@@ -328,37 +332,6 @@ class SchedulerService(TaskBase):
         #  'app.tasks.rss_fetcher.fetch_rss()'
         #  }]
 
-        # self.logger.debug(f"job.to_dict(): {job.to_dict()}")
-        # self.logger.debug(
-        #     f"list(self.asyncScheduler.get_jobs(with_times=True)) : {list(self.asyncScheduler.get_jobs(with_times=True))}")
-
-        #### 예약 전송 Notification 생성
-        # - @background_task에서의 생성은 running부터 시작되는 것
-        # Notification.create(
-        #     username=session.get('username'),
-        #     name='task_reserve',
-        #     data={
-        #         'task_id': task.id,
-        #         'reserved_at': scheduled_time.isoformat()
-        #     }
-        # )
-
-        # except RedisError as e:
-        #     # 3) enqueue가 실패하면 Task의 failed 칼럼을 True / status를 finished로 채워준다
-        #     self.logger.error(str(e), exc_info=True)
-        #     task.update(
-        #         failed=True,
-        #         status='finished',
-        #         log=f'Could not connect to Redis: ' + str(e)
-        #     )
-        # except Exception as e:
-        #     self.logger.error(str(e), exc_info=True)
-        #     # 4) enqueue가 Retry실패 등으로 Redis외 에러가 발생해도 DB에 기록
-        #     task.update(
-        #         failed=True,
-        #         status='finished',
-        #         log=f'Error: ' + str(e)
-        #     )
 
         self.logger.info(f'Scheduled {task_func.__name__}({args}, {kwargs}) to run every {interval} seconds')
         return job
@@ -381,10 +354,6 @@ class SchedulerService(TaskBase):
         datetime.fromtimestamp() as was previous. This had been a bug, which will be
         remedied.
         """
-        # # for test
-        # scheduled_jobs = self.asyncScheduler.get_jobs()
-        # for job in scheduled_jobs:
-        #     self.asyncScheduler.cancel(job)
 
         if not description:
             raise ValueError('Description required to start cron job')
@@ -393,15 +362,9 @@ class SchedulerService(TaskBase):
         if isinstance(timeout, timedelta):
             timeout = int(timeout.total_seconds())
 
-        # DB 연동
-        # task = self.model.create(session, name=task_func.__name__, description=description,
-        #                          status='reserved', reserved_at=scheduled_time)
-        # self.logger.info(f'schedule task start...')
-        # try:
-
         job = self.asyncScheduler.cron(
             cron_string,  # 나중에는 utc버전으로 바뀌는 듯?
-            func=task_func,
+            func=task_func.__name__,
             args=args,
             kwargs=kwargs,
             result_ttl=result_ttl,
@@ -409,37 +372,16 @@ class SchedulerService(TaskBase):
             # id=,
             use_local_timezone=True
         )
-        # self.logger.debug(f"job.to_dict(): {job.to_dict()}")
-        # self.logger.debug(
-        #     f"list(self.asyncScheduler.get_jobs(with_times=True)) : {list(self.asyncScheduler.get_jobs(with_times=True))}")
 
-        #### 예약 전송 Notification 생성
-        # - @background_task에서의 생성은 running부터 시작되는 것
-        # Notification.create(
-        #     username=session.get('username'),
-        #     name='task_reserve',
-        #     data={
-        #         'task_id': task.id,
-        #         'reserved_at': scheduled_time.isoformat()
-        #     }
-        # )
-
-        # except RedisError as e:
-        #     # 3) enqueue가 실패하면 Task의 failed 칼럼을 True / status를 finished로 채워준다
-        #     self.logger.error(str(e), exc_info=True)
-        #     task.update(
-        #         failed=True,
-        #         status='finished',
-        #         log=f'Could not connect to Redis: ' + str(e)
-        #     )
-        # except Exception as e:
-        #     self.logger.error(str(e), exc_info=True)
-        #     # 4) enqueue가 Retry실패 등으로 Redis외 에러가 발생해도 DB에 기록
-        #     task.update(
-        #         failed=True,
-        #         status='finished',
-        #         log=f'Error: ' + str(e)
-        #     )
+        # DB 연동
+        self.model.get_or_create(**{
+            'job_id': job.id,
+            'type': 'cron',
+            'name': task_func.__name__,
+            'description': description,
+            'args': args,
+            'kwargs': kwargs,
+        })
 
         self.logger.info(f'Cron {task_func.__name__}({args}, {kwargs}) to run every {cron_string}')
         return job
@@ -541,28 +483,14 @@ class SchedulerService(TaskBase):
             if 'scheduled_time' in new_job_dict:
                 try:
                     job = self.schedule(**new_job_dict)
-                    self.model.get_or_create(**{
-                        'job_id': job.id,
-                        'type': 'schedule',
-                        'name': new_job_dict.get('task_func').__name__,
-                        'description': new_job_dict.get('description'),
-                        'args': new_job_dict.get('args'),
-                        'kwargs': new_job_dict.get('kwargs'),
-                    })
+                    # db 생성을 내부로 이동
                 except Exception as e:
                     self.logger.error(f'{str(e)}', exc_info=True)
 
             elif 'cron_string' in new_job_dict:
                 try:
                     job = self.cron(**new_job_dict)
-                    self.model.get_or_create(**{
-                        'job_id': job.id,
-                        'type': 'cron',
-                        'name': new_job_dict.get('task_func').__name__,
-                        'description': new_job_dict.get('description'),
-                        'args': new_job_dict.get('args'),
-                        'kwargs': new_job_dict.get('kwargs'),
-                    })
+                    # db 생성을 내부로 이동
                 except Exception as e:
                     self.logger.error(f'{str(e)}', exc_info=True)
             else:

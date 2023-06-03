@@ -285,7 +285,7 @@ class Notification(BaseModel):
 class ScheduledTask(BaseModel):
     __tablename__ = 'scheduledtasks'
 
-    statuses = ['running', 'death']
+    statuses = ['running', 'death', 'failed']
     types = ['schedule', 'cron']
 
     id = db.Column(db.Integer, primary_key=True)
@@ -333,7 +333,7 @@ class ScheduledTask(BaseModel):
         # 기존에 있는 데이터를 갖다쓴다면,
         # 'death'상태의 기존 데이터라면 ->  status='running' + 달라질 수 있는 필수 job_id for cancel / type 을 필수로 업뎃해줘야한다.
         else:
-            if instance.status == 'death':
+            if instance.status == 'death' or 'failed':
                 instance.update(
                     status='running',
                     job_id=job_dict.get('job_id'),
@@ -347,9 +347,6 @@ class ScheduledTaskInstance(BaseModel):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), index=True)
-    # 자식은 no description?!
-
-    # args, kwargs
 
 
     # 부모와의 관계
@@ -357,12 +354,12 @@ class ScheduledTaskInstance(BaseModel):
     parent = relationship('ScheduledTask', foreign_keys=[parent_id], back_populates='children', uselist=False)
 
     # 일반 task와 공통점
-    statuses = ['queued', 'running', 'canceled', 'finished', 'reserved']
+    statuses = ['running', 'canceled', 'finished'] # ['queued', , 'reserved']
 
     failed = db.Column(db.Boolean, default=False)
-    status = db.Column(db.Enum(*statuses, name='status'), default='queued', index=True)
+    status = db.Column(db.Enum(*statuses, name='status'), default='running', index=True)
     log = db.Column(db.Text)
-    result = db.Column(Json, nullable=True)
+    # result = db.Column(Json, nullable=True)
 
     def __repr__(self):
         return f'<ScheduledTaskInstance {self.id} {self.name}>'

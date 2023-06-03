@@ -1,9 +1,11 @@
 from app import sse
 from app.rss_sources import YoutubeService, BlogService, URLService
+from app.tasks.decorators import scheduled_task
 from app.utils import schedule_logger
 from app.rss_sources.config import SourceConfig
 
 
+@scheduled_task
 def fetch_rss():
     try:
         if SourceConfig.youtube_target_ids:
