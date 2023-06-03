@@ -29,13 +29,13 @@ def transaction(f):
 
 class BaseModel(Base):
     __abstract__ = True
+
     @declared_attr
     def __tablename__(cls) -> str:
         return cls.__name__.lower()
 
     created_at = db.Column(db.DateTime(timezone=True), nullable=True, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=True, default=datetime.utcnow, onupdate=datetime.utcnow)
-
 
     @classmethod
     def get_or_create(cls, get_key=None, **kwargs):
@@ -109,6 +109,9 @@ class Json(db.types.TypeDecorator):
     """Enables JSON storage by encoding and decoding on the fly."""
     impl = db.types.Text
 
+    # 경고로 인해 추가
+    cache_ok = True
+
     def process_bind_param(self, value, dialect):
         # Python -> SQL
 
@@ -120,3 +123,22 @@ class Json(db.types.TypeDecorator):
 
 
 mutable.MutableDict.associate_with(Json)
+
+
+class List(db.types.TypeDecorator):
+    """Enables JSON list storage by encoding and decoding on the fly."""
+    impl = db.Text
+
+    # 경고로 인해 추가
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            return json.dumps(value).encode('utf-8')
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            return json.loads(value.decode('utf-8'))
+
+
+mutable.MutableList.associate_with(List)

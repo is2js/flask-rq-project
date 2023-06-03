@@ -455,7 +455,7 @@
                scheduled_time=datetime.now(),
                task_func=print, args=['scheduler work...1'], kwargs={},
                description='test',
-               interval=timedelta(seconds=30), #repeat=4,
+               interval=timedelta(seconds=30), # repeat=4,
                timeout=timedelta(minutes=10),
            ),
            dict(
@@ -473,7 +473,7 @@
                for job in schedule_jobs:
                   try:
                       # 이미 존재하는 작업인지 확인하고, 존재하는 job이면 cancel+delete까지 해주기
-                      existed_schedule = scheduler_service.exists(job)
+                      existed_schedule = scheduler_service.exists_in_redis(job)
                       if existed_schedule:
                           scheduler_service.cancel_schedule(existed_schedule)
           
@@ -534,7 +534,7 @@
        for job in schedule_jobs + cron_jobs:
            try:
                # 이미 존재하는 작업인지 확인하고, 존재하는 job이면 cancel+delete까지 해주기
-               existed_schedule = scheduler_service.exists(job)
+               existed_schedule = scheduler_service.exists_in_redis(job)
                if existed_schedule:
                    scheduler_service.cancel_schedule(existed_schedule)
    

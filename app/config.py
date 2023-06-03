@@ -16,8 +16,10 @@ class Config:
         'pool_timeout': 5,
         'max_overflow': 10
     } if os.getenv('DATABASE_URL') else {
-        'pool_size': 1,
-        'max_overflow': 0
+        # 'pool_size': 1,
+        # 'max_overflow': 0
+        'pool_size': 3,
+        'max_overflow': 10
     }
 
     REDIS_URL = f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}"  # redis://redis:6379

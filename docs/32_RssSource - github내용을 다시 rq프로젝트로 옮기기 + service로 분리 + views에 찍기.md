@@ -132,7 +132,7 @@
         # for job in schedule_jobs:
         for job in schedule_jobs + cron_jobs:
             try:
-                existed_schedule = scheduler_service.exists(job)
+                existed_schedule = scheduler_service.exists_in_redis(job)
                 if existed_schedule:
                     scheduler_service.cancel_schedule(existed_schedule)
     

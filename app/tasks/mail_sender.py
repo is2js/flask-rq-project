@@ -4,9 +4,7 @@ from threading import Thread
 from flask_mail import Message
 from app.config import Config
 from .decorators import background_task, set_task_progress
-from rq import Retry
 
-from app.models import Task
 from ..extentions import mail
 from flask import render_template
 from app import create_app

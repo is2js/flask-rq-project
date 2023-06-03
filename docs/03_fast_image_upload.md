@@ -205,7 +205,7 @@
    
            # 폴더 만들기 -> 여러 경로의 폴더를 이어서 만들 땐, os.makedirs( , exist_ok=True)로 한다
            image_dir_path = app.config['UPLOAD_FOLDER'].joinpath(image_dir_name)
-           if not os.path.exists(image_dir_path):
+           if not os.path.exists_in_redis(image_dir_path):
                # os.mkdir(image_dir_path)
                os.makedirs(image_dir_path, exist_ok=True)
    

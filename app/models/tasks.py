@@ -5,12 +5,13 @@ import redis.exceptions
 import rq
 from rq.command import send_stop_job_command
 from sqlalchemy import desc, asc
+from sqlalchemy.orm import relationship
 
 from app import session
 from app.extentions import r
 import sqlalchemy as db
 
-from app.models.base import BaseModel, Json
+from app.models.base import BaseModel, Json, List
 
 
 def format_datetime(value, fmt='%Y-%m-%d %H:%M'):
@@ -21,9 +22,6 @@ def format_datetime(value, fmt='%Y-%m-%d %H:%M'):
 def format_date(value, fmt='%Y-%m-%d'):
     formatted = value.strftime(fmt.encode('unicode-escape').decode()).encode().decode('unicode-escape')
     return formatted
-
-
-
 
 
 class Task(BaseModel):
@@ -282,3 +280,89 @@ class Notification(BaseModel):
             Notification.username == _session.get('username'),
             Notification.timestamp > since
         ).order_by(asc(Notification.timestamp)).all()
+
+
+class ScheduledTask(BaseModel):
+    __tablename__ = 'scheduledtasks'
+
+    statuses = ['running', 'death']
+    types = ['schedule', 'cron']
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(db.String(128), index=True)
+    description = db.Column(db.String(128))
+
+    # cancel시 필요
+    job_id = db.Column(db.String(36), nullable=False)
+
+    # complete = db.Column(db.Boolean, default=False)
+    status = db.Column(db.Enum(*statuses, name='status'), default='running', index=True)
+
+    # 추가 type + args + kwargs
+    type = db.Column(db.Enum(*types, name='type'), nullable=False)
+    args = db.Column(List, nullable=True)
+    kwargs = db.Column(Json, nullable=True)
+
+    # 인스턴스 자식의 수행시간
+    # => scheduled_for -> 자식 등록 후 나옴. -> 자식입장에서 update해줘야함. -> nullable=True로 주자
+    scheduled_for = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    children = relationship('ScheduledTaskInstance', back_populates='parent', cascade='all, delete-orphan')
+
+    def __repr__(self):
+        return f'<ScheduledTask {self.id} {self.name}>'
+
+    @classmethod
+    def get_list(cls):
+        return cls.query.all()
+
+    @classmethod
+    def get_or_create(cls, **job_dict):
+        instance = cls.query.filter(
+            job_dict.get('name') == getattr(cls, 'name'),
+            job_dict.get('args') == getattr(cls, 'args'),
+            job_dict.get('kwargs') == getattr(cls, 'kwargs'),
+
+        ).first()
+        # 기존에 없는 데이터면 생성해서 쓴다.
+        if instance is None:
+            instance = cls(**job_dict)
+            instance.save()
+
+        # 기존에 있는 데이터를 갖다쓴다면,
+        # 'death'상태의 기존 데이터라면 ->  status='running' + 달라질 수 있는 필수 job_id for cancel / type 을 필수로 업뎃해줘야한다.
+        else:
+            if instance.status == 'death':
+                instance.update(
+                    status='running',
+                    job_id=job_dict.get('job_id'),
+                    type=job_dict.get('type')
+                )
+
+        return instance
+
+class ScheduledTaskInstance(BaseModel):
+    __tablename__ = 'scheduledtaskinstances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), index=True)
+    # 자식은 no description?!
+
+    # args, kwargs
+
+
+    # 부모와의 관계
+    parent_id = db.Column(db.Integer, db.ForeignKey('scheduledtasks.id', ondelete="CASCADE"))
+    parent = relationship('ScheduledTask', foreign_keys=[parent_id], back_populates='children', uselist=False)
+
+    # 일반 task와 공통점
+    statuses = ['queued', 'running', 'canceled', 'finished', 'reserved']
+
+    failed = db.Column(db.Boolean, default=False)
+    status = db.Column(db.Enum(*statuses, name='status'), default='queued', index=True)
+    log = db.Column(db.Text)
+    result = db.Column(Json, nullable=True)
+
+    def __repr__(self):
+        return f'<ScheduledTaskInstance {self.id} {self.name}>'
