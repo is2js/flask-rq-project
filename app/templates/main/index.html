@@ -3,6 +3,38 @@
 {% block title %} Index Page {% endblock title %}
 
 {% block template %}
-    {% include "base/navbar.html" %}
-    {% include "main/components/splash.html" %}
+{% include "base/navbar.html" %}
+{% include "main/components/splash.html" %}
+
+<div class="container pt-5">
+    <div class="row">
+        <div class="col-12 col-lg-8">
+            {% for feed in feeds %}
+                <a href="" class="text-decoration-none infScroll">
+                    <div class="card border-0 pb-5 pb-md-3">
+                        <div class="row">
+                            <div class="col-8">
+                                <div class="card-body p-0">
+                                    <div class="pb-2 text-body infScroll-category">{{feed.source.source_category.name}}</div>
+                                    <h1 class="mb-1 text-body fw-bold">{{feed.title | truncate(50, true, '...') }}</h1>
+                                    <h2 class="text-muted fs-6 d-none d-sm-block">{{feed.body | truncate(100, true, '...')  }}</h2>
+                                    <div class="text-muted infScroll-date">{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <img src="https://picsum.photos/205/115" class="img-fluid float-end" alt="">
+<!--                                <img src="{{feed.thumbnail_url}}" class="img-fluid float-end" alt="">-->
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="d-none d-lg-block col-4">
+            tag_cloud
+        </div>
+
+    </div>
+</div>
 {% endblock template %}

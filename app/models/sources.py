@@ -1,3 +1,4 @@
+import pytz
 from sqlalchemy import func, and_, or_, case
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, joinedload
@@ -90,3 +91,10 @@ class Feed(BaseModel):
     @property
     def published_timestamp(self):
         return self.published.timestamp() if self.published else None
+
+    @property
+    def kst_published(self):
+        kst_tz = pytz.timezone('Asia/Seoul')
+        utc_dt = self.published.replace(tzinfo=pytz.UTC)
+        kst_dt = utc_dt.astimezone(kst_tz)
+        return kst_dt

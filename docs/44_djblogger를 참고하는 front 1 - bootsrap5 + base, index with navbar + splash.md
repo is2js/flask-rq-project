@@ -309,3 +309,11 @@
     <div class="row ">
     <div class="col-12 col-md-6 py-1 py-md-5 text-center text-md-start">
     ```
+    
+
+14. container에 `py-5`를 줘서, navbar <- splash -> 컨텐츠 사이에 간격을 추가한다.
+    ```html
+    <div class="border-bottom border-1 border-dark">
+        <div class="container py-5">
+        <!-- ... -->        
+    ```

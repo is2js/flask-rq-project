@@ -21,3 +21,20 @@ html, body{
 .fw-600 {
     font-weight: 600;
 }
+
+.infScroll h1 {
+    font-size: 22px;
+    letter-spacing: -0.6px;
+}
+
+@media only screen and (max-width: 768px){
+    .infScroll h1 {
+        font-size: 0.9375rem;
+        letter-spacing: -0.0px;
+    }
+
+    .infScroll-category,
+    .infScroll-date {
+        font-size: 0.8125rem;
+    }
+}

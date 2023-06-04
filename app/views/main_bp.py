@@ -19,7 +19,14 @@ main_bp = Blueprint('main', __name__)
 # route 작성
 @main_bp.route('/')
 def index():
-    return render_template('main/index.html')
+    feeds = []
+    for service in get_current_services():
+        feeds += service.get_feeds()
+
+    # 통합feeds를 published 정순으로 정렬
+    feeds.sort(key=lambda feed: feed.published)
+
+    return render_template('main/index.html', feeds=feeds)
 
 
 @main_bp.route('/word-counter', methods=['GET', 'POST'])
