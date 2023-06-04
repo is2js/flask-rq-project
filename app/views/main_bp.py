@@ -19,7 +19,7 @@ main_bp = Blueprint('main', __name__)
 # route 작성
 @main_bp.route('/')
 def index():
-    return "Hello world222"
+    return render_template('main/index.html')
 
 
 @main_bp.route('/word-counter', methods=['GET', 'POST'])

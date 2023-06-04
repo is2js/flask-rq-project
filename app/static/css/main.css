@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,900&display=swap');
+
+@font-face {
+    font-family: 'HallymR';
+    src: url('../fonts/HallymR.eot');
+    src: url('../fonts/HallymR.eot?#iefix') format('embedded-opentype'),
+    url('../fonts/HallymR.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+.logo {
+    font-family: 'Archivo', sans-serif;
+    letter-spacing: -1.5px;
+}
+
+html, body{
+    font-family: "HallymR", sans-serif;
+}
+
+.fw-600 {
+    font-weight: 600;
+}
