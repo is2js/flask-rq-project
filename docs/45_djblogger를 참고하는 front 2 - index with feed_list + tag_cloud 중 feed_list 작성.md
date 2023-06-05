@@ -346,3 +346,41 @@
         }
     }
     ```
+   
+
+### 내부에서 친구들이 특정cusom class를 사용했다면, h1을 부모cutsom으로 공통h1태그를 특정할 필요 없어짐 -> custom class로 변경
+- 기존
+    ```html
+    <a href="" class="text-decoration-none infScroll">
+        <h1 class="mb-1 text-body fw-bold">
+    ```
+    ```css
+    .infScroll h1 {
+        font-size: 22px;
+        letter-spacing: -0.6px;
+    }
+    
+    @media only screen and (max-width: 768px){
+        .infScroll h1 {
+            font-size: 0.9375rem;
+            letter-spacing: -0.0px;
+        }
+    
+    ```
+- 변경
+    ```html
+    <a href="" class="text-decoration-none">
+        <h1 class="mb-1 text-body fw-bold infScroll-title">
+    ```
+    ```css
+    .infScroll-title {
+        font-size: 22px;
+        letter-spacing: -0.6px;
+    }
+    
+    @media only screen and (max-width: 768px){
+        .infScroll-title {
+            font-size: 0.9375rem;
+            letter-spacing: -0.0px;
+        }
+    ```

@@ -5,6 +5,7 @@ import pytz
 from sqlalchemy.orm import joinedload
 
 from app.models import SourceCategory, Source, Feed
+from app.models.pagination import paginate
 from app.rss_sources.config import SourceConfig
 from app.rss_sources.templates import TITLE_TEMPLATE, TABLE_START, TABLE_END
 from app.utils import parse_logger
@@ -106,8 +107,10 @@ class SourceService:
             # total_pages = (total_count - 1) // display_numbers + 1  # 전체 페이지 수
 
             # 페이지에 해당하는 결과 조회
-            offset = (page - 1) * display_numbers  # OFFSET 값 계산 (3페 -> 앞에 20개 배기 -> 3-1 * 10)
-            feeds = query.limit(display_numbers).offset(offset).all()
+            # offset = (page - 1) * display_numbers  # OFFSET 값 계산 (3페 -> 앞에 20개 배기 -> 3-1 * 10)
+            # feeds = query.limit(display_numbers).offset(offset).all()
+
+            return paginate(query, page=page, per_page=display_numbers)
 
         else:
             feeds = query.order_by(Feed.published.desc()) \

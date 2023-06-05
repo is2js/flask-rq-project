@@ -2,6 +2,7 @@ import os
 import secrets
 import string
 import random
+import time
 from datetime import datetime, timedelta
 
 import markdown2 as markdown2
@@ -16,6 +17,11 @@ from app.utils import logger
 
 main_bp = Blueprint('main', __name__)
 
+
+def is_htmx_request():
+    return 'HX-Request' in request.headers
+
+
 # route 작성
 @main_bp.route('/')
 def index():
@@ -25,10 +31,39 @@ def index():
     #
     # # 통합feeds를 published 정순으로 정렬
     # feeds.sort(key=lambda feed: feed.published)
+    # if is_htmx_request:
+    #     feeds = URLService().get_feeds(page=2)
+    # return f"'HX-Request' in request.headers: {'HX-Request' in request.headers}"
+    # return render_template('main/components/feed-list-elements.html', feeds=feeds)
 
-    feeds = URLService().get_feeds(page=1)
+    page = request.args.get('page', 1, type=int)
 
-    return render_template('main/index.html', feeds=feeds)
+    if is_htmx_request():
+        # feeds = URLService().get_feeds(page=2)
+        # return render_template('main/components/feed-list-elements.html', feeds=feeds)
+        # feeds = URLService().get_feeds(page=page)
+        # time.sleep(0.5)
+        # return render_template('main/components/feed-list-elements.html', feeds=feeds, page=page)
+        pagination = URLService().get_feeds(page=page)
+        time.sleep(0.2)
+        return render_template('main/components/feed-list-elements.html',
+                               feeds=pagination.items,
+                               page=pagination.page,
+                               has_next=pagination.has_next
+                               )
+
+    # feeds = URLService().get_feeds(page=1)
+    # return render_template('main/index.html', feeds=feeds)
+    # feeds = URLService().get_feeds(page=page)
+    # return render_template('main/index.html', feeds=feeds, page=page)
+
+    pagination = URLService().get_feeds(page=page)
+
+    return render_template('main/index.html',
+                           feeds=pagination.items,
+                           page=pagination.page,
+                           has_next=pagination.has_next
+                           )
 
 
 @main_bp.route('/word-counter', methods=['GET', 'POST'])
@@ -153,8 +188,6 @@ def send_mail():
         'recipient': session.get('recipient', ''),
         'template_name': session.get('template_name', ''),
     }
-
-
 
     if request.method == 'POST':
         # return str(request.form.to_dict())
@@ -362,7 +395,6 @@ def notifications():
     # logger.debug([ n.to_dict() for n in notifications])
 
     return jsonify([n.to_dict() for n in notifications])
-
 
 
 @main_bp.route('/rss', methods=['GET', 'POST'])
