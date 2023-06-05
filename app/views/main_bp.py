@@ -8,7 +8,7 @@ import markdown2 as markdown2
 from flask import request, render_template, flash, session, redirect, url_for, jsonify, Blueprint, current_app as app
 from sqlalchemy import asc
 from app.extentions import queue
-from app.rss_sources import get_current_services
+from app.rss_sources import get_current_services, URLService
 from app.tasks import count_words, create_image_set, send_async_mail
 from app.models import Task, Message, Notification
 from app.tasks.service import TaskService
@@ -19,12 +19,14 @@ main_bp = Blueprint('main', __name__)
 # route 작성
 @main_bp.route('/')
 def index():
-    feeds = []
-    for service in get_current_services():
-        feeds += service.get_feeds()
+    # feeds = []
+    # for service in get_current_services():
+    #     feeds += service.get_feeds()
+    #
+    # # 통합feeds를 published 정순으로 정렬
+    # feeds.sort(key=lambda feed: feed.published)
 
-    # 통합feeds를 published 정순으로 정렬
-    feeds.sort(key=lambda feed: feed.published)
+    feeds = URLService().get_feeds(page=1)
 
     return render_template('main/index.html', feeds=feeds)
 

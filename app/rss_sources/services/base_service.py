@@ -50,14 +50,14 @@ class SourceService:
             session.rollback()
             return False
 
-    def get_feeds(self, since=None):
+    def get_feeds(self, since=None, page=None):
         # SourceCategory 필터링
         source_category_name = self.get_source_category_name()
         # Source-target_url(Youtube, Blog) or name(URL) 및 Feed-category(Blog) 필터링
         target_info_for_filter = self.get_target_infos()
         display_numbers = self.get_display_numbers()
 
-        feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers, since=since)
+        feeds = self._get_feeds(source_category_name, target_info_for_filter, display_numbers, since=since, page=page)
 
         return feeds
 
@@ -72,7 +72,8 @@ class SourceService:
     def get_display_numbers(self):
         raise NotImplementedError
 
-    def _get_feeds(self, source_category_name, target_infos, display_numbers, since=None):
+    def _get_feeds(self, source_category_name, target_infos, display_numbers,
+                   since=None, page=None):
         # cls별 개별 필터링 by source_category_name, target_info_for_filter
         filter_clause = self._create_feed_filter_clause(source_category_name, target_infos)
 
@@ -91,10 +92,22 @@ class SourceService:
             .options(joinedload(Feed.source).joinedload(Source.source_category)) \
             .filter(filter_clause)
 
+        # sse에서 최신데이터 가져오기용
         if since:
             since = datetime.fromtimestamp(since)
             feeds = query.filter(Feed.published > since) \
                 .all()
+
+        # pagination용
+        elif page:
+            query = query.order_by(Feed.published.desc())
+
+            # total_count = query.count()  # 전체 결과 수
+            # total_pages = (total_count - 1) // display_numbers + 1  # 전체 페이지 수
+
+            # 페이지에 해당하는 결과 조회
+            offset = (page - 1) * display_numbers  # OFFSET 값 계산 (3페 -> 앞에 20개 배기 -> 3-1 * 10)
+            feeds = query.limit(display_numbers).offset(offset).all()
 
         else:
             feeds = query.order_by(Feed.published.desc()) \
