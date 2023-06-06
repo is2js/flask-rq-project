@@ -1,8 +1,10 @@
 import pytz
+import sqlalchemy.event
+from flask import url_for
 from sqlalchemy import func, and_, or_, case
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship, joinedload
 
+from . import slugify
 from .base import BaseModel, db, transaction
 
 
@@ -84,8 +86,9 @@ class Source(BaseModel):
 
 class Feed(BaseModel):
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.Text, nullable=False)
-    url = db.Column(db.Text, nullable=False, index=True)
+    title = db.Column(db.String(180), nullable=False)
+    slug = db.Column(db.String(180), nullable=False, unique=True)
+    url = db.Column(db.Text, nullable=False, unique=True)
     thumbnail_url = db.Column(db.Text, nullable=True)
     category = db.Column(db.Text, nullable=True)
     body = db.Column(db.Text, nullable=True)
@@ -105,3 +108,27 @@ class Feed(BaseModel):
         utc_dt = self.published.replace(tzinfo=pytz.UTC)
         kst_dt = utc_dt.astimezone(kst_tz)
         return kst_dt
+
+    @staticmethod
+    def generate_slug(target, value, old_value, initiator):
+        if value and (not target.slug or value != old_value):
+            target.slug = slugify(value)
+
+    @property
+    def absolute_url(self):
+        return url_for("main.feed_single", slug=self.slug)
+
+    @classmethod
+    @transaction
+    def get_by_slug(cls, slug):
+        _Source = cls.source.mapper.class_
+
+        items = cls.query \
+            .options(joinedload(cls.source).joinedload(_Source.source_category)) \
+            .filter_by(slug=slug) \
+            .first()
+
+        return items
+
+
+db.event.listen(Feed.title, 'set', Feed.generate_slug, retval=False)

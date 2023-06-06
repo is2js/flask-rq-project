@@ -11,7 +11,7 @@ from sqlalchemy import asc
 from app.extentions import queue
 from app.rss_sources import get_current_services, URLService
 from app.tasks import count_words, create_image_set, send_async_mail
-from app.models import Task, Message, Notification, SourceCategory
+from app.models import Task, Message, Notification, SourceCategory, Feed
 from app.tasks.service import TaskService
 from app.utils import logger
 
@@ -69,6 +69,13 @@ def index():
                            categories=categories
                            )
 
+
+@main_bp.route('/feed/<slug>')
+def feed_single(slug):
+    # feed = Feed.query.filter_by(slug=slug).first()
+    # return f"{feed.to_dict()}"
+    feed = Feed.get_by_slug(slug)
+    return render_template('main/single.html', feed=feed)
 
 @main_bp.route('/word-counter', methods=['GET', 'POST'])
 def word_counter():

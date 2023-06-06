@@ -113,6 +113,7 @@ def scheduled_task(f):
                 status='finished',
                 log=f'Failed for: ' + str(e)
             )
+            # 자식실패시 부모는 실패상황이라고 업데이트하기
         finally:
             if child_task.failed:
                 parent_task.update(status='failed')
