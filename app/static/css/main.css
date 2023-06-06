@@ -22,6 +22,14 @@ html, body{
     font-weight: 600;
 }
 
+
+.fs-14 {
+    font-size: 0.875rem;
+}
+
+.fs-15 {
+    font-size: 0.938rem;
+}
 .infScroll-title {
     font-size: 22px;
     letter-spacing: -0.6px;
@@ -40,3 +48,4 @@ html, body{
         font-size: 0.8125rem;
     }
 }
+

@@ -11,7 +11,7 @@ from sqlalchemy import asc
 from app.extentions import queue
 from app.rss_sources import get_current_services, URLService
 from app.tasks import count_words, create_image_set, send_async_mail
-from app.models import Task, Message, Notification
+from app.models import Task, Message, Notification, SourceCategory
 from app.tasks.service import TaskService
 from app.utils import logger
 
@@ -59,10 +59,14 @@ def index():
 
     pagination = URLService().get_feeds(page=page)
 
+    categories = SourceCategory.get_source_config_active_list()
+    # [<app.models.sources.SourceCategory object at 0x7f5de54aa580>, <app.models.sources.SourceCategory object at 0x7f5de54aa5e0>, <app.models.sources.SourceCategory object at 0x7f5de54aa190>]
+
     return render_template('main/index.html',
                            feeds=pagination.items,
                            page=pagination.page,
-                           has_next=pagination.has_next
+                           has_next=pagination.has_next,
+                           categories=categories
                            )
 
 

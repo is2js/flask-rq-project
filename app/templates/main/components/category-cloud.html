@@ -1,0 +1,16 @@
+<div class="mb-4">
+    <div class="border-bottom">
+        <div class="pb-2">
+            <h4 class="pb-2 fw-bold fs-14">다양한 RSS Feed Source를 선택해보세요.</h4>
+            {% for category in categories %}
+            <span class="border border-dark rounded-pill p-1 px-3 me-1 mb-2"
+                  style="display: inline-block"
+            >
+                <a href="" class="fs-15 fw-600 text-decoration-none text-dark">
+                    {{category.name}}
+                </a>
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+</div>

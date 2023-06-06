@@ -53,6 +53,13 @@ class SourceCategory(BaseModel):
 
         return target_filter
 
+    @classmethod
+    def get_source_config_active_list(cls):
+        return cls.query \
+            .outerjoin(cls.sources) \
+            .filter(cls.source_config_filter()) \
+            .all()
+
 
 class Source(BaseModel):
     """
