@@ -154,8 +154,8 @@
 7. **`flex` card에 대해 `card-body`를 col-8의 feed list 글작성란에 사용한다.**
     - 아래보는 것과 같이 `flex: 1 1 auto`와 `padding`을 가지고 있는데 **`card-body p-0`을 사용하여 패딩은 없애서 일반 div처럼 사용할 예정이다.**
     - 이 때, **`1 1 auto`**는 
-        - **flex-grow:1로서 컨테이너 내부 item이 container 여유공간에 따라 확장가능하게 하여 `컨테이너에 따라 늘려지고`**
-        - **flex-shrink:1로서 컨테이너 내부 item이 container를 초과할시 그에 따라 축소하여 `넘치면 맞추고`**
+        - **flex-grow:1로서 컨테이너 내부 item이 container 여유공간에 따라 확장가능하게 하여 `부모 컨테이너에 따라 늘려지고`**
+        - **flex-shrink:1로서 컨테이너 내부 item이 container를 초과할시 그에 따라 축소하여 `부모 컨테이너보다 넘치면 맞춰서 축소되고`**
         - **flex-basis:auto로서 컨테이너 내부 item이 처음 시작할 때 `item내부 컨텐츠에 따라서 자동 크기 조절되어 시작`되도록 한다**
     ```css
     card-body{flex:1 1 auto;padding:1rem 1rem}
