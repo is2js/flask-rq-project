@@ -319,3 +319,26 @@
         <div class="container  sticky-top py-2 px-4 px-lg-0">
             <a href="/" class="navbar-brand m-0">
     ```
+   
+
+### md -> sm로 넘어갈 때 .container에 의해 max-width가 잡혀 좁아져 logo가 이동하는 문제 해결
+1. container와 container-sm은 **미디어쿼리가 `md->sm진입시 max-width:580px`가 걸려버려서, 내용물이 다시 가운데로 모여버린다.**
+2. **`.container대신 .container-md`를 줘서, `md이상부터 container가 적용되어 가운데로 안모이게`할 수 도 있고**
+3. **`.container-fluid`를 줘서 항상 width 100%를 유지할 수도 있다.**
+4. **제일 좋은 것은 `적용되는 미디어쿼리 복사` -> `해당시만 width 100%`로 직접 주면 된다.**
+    1. 줄이다가 튀는 곳에서 멈쳐서 미디어쿼리를 확인하고 복사한다.
+        ```css
+        @media (min-width: 576px)
+        .container, .container-sm {
+            max-width: 540px;
+        }
+        ```
+    2. **`최소 sm(576)부터(min)` 이미 540으로 제한되고 있다. 하지만 나는 `md이하(768)부터(max)`도 md이상처럼 `max-width 100%`를 주고 싶다**
+        ```css
+            @media only screen and (max-width: 768px) {
+                .container, .container-sm {
+                    max-width: 100%;
+                }
+            }
+        ```
+        

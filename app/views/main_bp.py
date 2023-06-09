@@ -9,7 +9,7 @@ import markdown2 as markdown2
 from flask import request, render_template, flash, session, redirect, url_for, jsonify, Blueprint, current_app as app
 from sqlalchemy import asc
 from app.extentions import queue
-from app.rss_sources import get_current_services, URLService
+from app.rss_sources import get_current_services, URLService, YoutubeService, BlogService
 from app.tasks import count_words, create_image_set, send_async_mail
 from app.models import Task, Message, Notification, SourceCategory, Feed
 from app.tasks.service import TaskService
@@ -75,7 +75,26 @@ def feed_single(slug):
     # feed = Feed.query.filter_by(slug=slug).first()
     # return f"{feed.to_dict()}"
     feed = Feed.get_by_slug(slug)
-    return render_template('main/single.html', feed=feed)
+
+    categories = SourceCategory.get_source_config_active_list()
+
+    category_name = feed.source.source_category.name.lower() # 비교를 위하 소문자로
+    if category_name == 'youtube':
+        service = YoutubeService()
+    elif category_name == 'blog':
+        service = BlogService()
+    elif category_name == 'url':
+        service = URLService()
+    else:
+        raise ValueError(f'Invalid category name : {category_name}')
+
+    related_feeds = service.get_feeds()[:5] # 기본 10개 가져오는데 5개만
+
+    return render_template('main/single.html',
+                           feed=feed,
+                           categories=categories,
+                           related_feeds=related_feeds,
+                           )
 
 @main_bp.route('/word-counter', methods=['GET', 'POST'])
 def word_counter():

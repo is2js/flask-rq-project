@@ -1,15 +1,64 @@
 {% extends "base/3-col-template.html" %}
 
 {% block content_left %}
-    {% include "base/navbar-secondary.html" %}
+{% include "base/navbar-secondary.html" %}
 {% endblock content_left %}
 
 {% block content_mid %}
-    <div>{{feed.source.source_category.name}} > {{feed.source.name}} </div>
-    <div>{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
+<style>
+    .single-feed h1 {
+        letter-spacing: -0.6px;
+    }
 
-    <h1>{{feed.title}}</h1>
-    <h2>원본링크: {{feed.url}}</h2>
-    {{feed.body}}
+    .feed-body h1 {
+        font-size: 24px;
+        font-weight: bold;
+    }
+
+    .feed-body p {
+        font-family: 'Noto+Serif+KR', sans-serif;
+        font-size: 1.0625rem;
+        line-height: 32px;
+        letter-spacing: 0.2px;
+    }
+</style>
+<div class="single-feed mx-auto" style="max-width: 680px">
+    <div class="text-muted">{{feed.source.source_category.name}} > {{feed.source.name}}</div>
+    <div class="text-muted pb-3">{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
+    <h1 class="fw-bold pb-2">{{feed.title}}</h1>
+    <a href="{{feed.url}}" class="text-decoration-none">
+        <h3 class="text-muted mb-4 fs-4">원본링크 바로가기 </h3>
+    </a>
+    <div class="feed-body">
+        {{feed.body | markdown | safe}}
+    </div>
+</div>
+
 {% endblock content_mid %}
+
+{% block content_right %}
+{% include "main/components/category-cloud.html" %}
+
+<div class="col-12">
+    <div class="pb-3">More from {{feed.source.source_category.name}} 카테고리</div>
+    {% for feed in related_feeds %}
+    <a href="{{feed.absolute_url}}" class="text-decoration-none">
+        <div class="card border-0 mb-3 ps-1">
+            <div class="row">
+                <div class="col-9 pe-2">
+                    <div class="card-body p-0">
+                        <span class="small text-dark">{{feed.source.source_category.name}}</span>
+                        <h1 class="fs-6 text-dark fw-bold">{{feed.title | truncate(20, true, '...') }}</h1>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <img src="https://picsum.photos/205/115" alt="" class="img-fluid float-end">
+                </div>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+{% endblock content_right %}
 

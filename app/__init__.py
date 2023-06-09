@@ -12,7 +12,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from app.config import Config
 from .extentions import docs, sse
 
-from .templates.filters import remain_from_now
+from .templates.filters import remain_from_now, markdown
 
 # engine = create_engine("sqlite:///db.sqlite", pool_size=1, max_overflow=0) # default 5, 10
 engine = create_engine(Config.DATABASE_URL, **Config.SQLALCHEMY_POOL_OPTIONS)
@@ -130,5 +130,6 @@ def create_app():
         session.remove()
 
     app.jinja_env.filters["remain_from_now"] = remain_from_now
+    app.jinja_env.filters["markdown"] = markdown
 
     return app
