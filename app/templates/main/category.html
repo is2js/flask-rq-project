@@ -1,0 +1,18 @@
+{% extends "base/3-col-template.html" %}
+
+{% block content_left %}
+{% include "base/navbar-secondary.html" %}
+{% endblock content_left %}
+
+{% block content_mid %}
+<div class="mx-auto" style="max-width: 683px;">
+    <h1 class="fs-1 fw-bold pb-5">{{category_name}}</h1>
+    {% include "main/components/feed-list-elements-category.html" %}
+</div>
+{% endblock content_mid %}
+
+{% block content_right %}
+{% include "main/components/category-cloud.html" %}
+{% include "base/footer.html" %}
+{% endblock content_right %}
+

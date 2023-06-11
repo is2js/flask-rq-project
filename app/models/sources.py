@@ -122,7 +122,6 @@ class Feed(BaseModel):
     @transaction
     def get_by_slug(cls, slug):
         _Source = cls.source.mapper.class_
-
         items = cls.query \
             .options(joinedload(cls.source).joinedload(_Source.source_category)) \
             .filter_by(slug=slug) \

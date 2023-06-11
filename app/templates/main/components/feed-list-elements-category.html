@@ -1,15 +1,8 @@
 {% for feed in feeds %}
-<!--       hx-get="/"-->
-
-<!--       {% if loop.last %}-->
-<!--       hx-trigger="revealed"-->
-<!--       hx-get="/?page={{page + 1}}"-->
-<!--       hx-swap="afterend"-->
-<!--       {% endif %}-->
 <a href="{{feed.absolute_url}}" class="text-decoration-none">
     <div class="card border-0 mb-5 mb-md-3">
         <div class="row">
-            <div class="col-8">
+            <div class="col-9">
                 <div class="card-body p-0">
                     <div class="pb-2 text-body infScroll-category">{{feed.source.name}}</div>
                     <h1 class="mb-1 text-body fw-bold infScroll-title">{{feed.title | truncate(50, true, '...') }}</h1>
@@ -17,28 +10,19 @@
                     <div class="text-muted infScroll-date">{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
                 </div>
             </div>
-            <div class="col-4 pt-3">
+            <div class="col-3 pt-4">
                 <img src="https://picsum.photos/205/115" class="img-fluid float-end" alt="">
-                <!--               <img src="{{feed.thumbnail_url}}" class="img-fluid float-end" alt="">-->
             </div>
         </div>
     </div>
 </a>
-
 {% endfor %}
 
 
 {% if has_next %}
-<!--     hx-trigger="revealed"-->
-<!--     hx-get="/?page={{page + 1}}"-->
-<!--     hx-swap="outerHTML">-->
-<!--    <img src="/static/image/htmx/bars.svg" width="120px" class="htmx-indicator"-->
-<!--    />-->
-<!--</div>-->
-<!--     hx-get="/?page={{page + 1}}"-->
 <div class="text-center htmx-settling"
      hx-trigger="revealed"
-     hx-get="{{ url_for('main.index', page=page+1)}}"
+     hx-get="{{ url_for('main.feeds_by_category', name=category_name, page=page+1 )}}"
      hx-swap="outerHTML"
 >
     <img src="/static/image/htmx/bars.svg" width="120px"
@@ -46,8 +30,6 @@
     />
 </div>
 {% else %}
-<!--<div class="text-center htmx-settling">-->
-<!--<div class="text-center htmx-settling">-->
 <div class="text-center">
     <h5> 더이상 데이터가 없습니다. </h5>
 </div>

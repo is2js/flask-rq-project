@@ -72,8 +72,7 @@ def index():
 
 @main_bp.route('/feed/<slug>')
 def feed_single(slug):
-    # feed = Feed.query.filter_by(slug=slug).first()
-    # return f"{feed.to_dict()}"
+
     feed = Feed.get_by_slug(slug)
 
     categories = SourceCategory.get_source_config_active_list()
@@ -95,6 +94,47 @@ def feed_single(slug):
                            categories=categories,
                            related_feeds=related_feeds,
                            )
+
+
+@main_bp.route('/category/<name>')
+def feeds_by_category(name):
+    category_name = name.lower()  # 비교를 위하 소문자로
+
+    if category_name == 'youtube':
+        service = YoutubeService()
+    elif category_name == 'blog':
+        service = BlogService()
+    elif category_name == 'url':
+        service = URLService()
+    else:
+        raise ValueError(f'Invalid category name : {category_name}')
+
+    page = request.args.get('page', 1, type=int)
+
+    if is_htmx_request():
+        pagination = service.get_feeds(page=page)
+        time.sleep(0.2)
+        return render_template('main/components/feed-list-elements-category.html',
+                               feeds=pagination.items,
+                               page=pagination.page,
+                               has_next=pagination.has_next,
+                               category_name=name
+                               )
+
+    pagination = service.get_feeds(page=page)
+
+    # content_right - category-cloud + footer
+    categories = SourceCategory.get_source_config_active_list()
+    categories = categories
+
+    return render_template('main/category.html',
+                           feeds=pagination.items,
+                           page=pagination.page,
+                           has_next=pagination.has_next,
+                           categories=categories,
+                           category_name=name,
+                           )
+
 
 @main_bp.route('/word-counter', methods=['GET', 'POST'])
 def word_counter():

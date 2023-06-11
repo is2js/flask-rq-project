@@ -6,7 +6,7 @@
             <span class="border border-dark rounded-pill p-1 px-3 me-1 mb-2"
                   style="display: inline-block"
             >
-                <a href="" class="fs-15 fw-600 text-decoration-none text-dark">
+                <a href="{{url_for('main.feeds_by_category', name=category.name) }}" class="fs-15 fw-600 text-decoration-none text-dark">
                     {{category.name}}
                 </a>
             </span>
