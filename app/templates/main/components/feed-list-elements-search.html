@@ -1,0 +1,36 @@
+{% for feed in feeds %}
+<a href="{{feed.absolute_url}}" class="text-decoration-none">
+    <div class="card border-0 mb-5 mb-md-3">
+        <div class="row">
+            <div class="col-9">
+                <div class="card-body p-0">
+                    <div class="pb-2 text-body infScroll-category">{{feed.source.name}}</div>
+                    <h1 class="mb-1 text-body fw-bold infScroll-title">{{feed.title | truncate(50, true, '...') }}</h1>
+                    <h2 class="text-muted fs-6 d-none d-sm-block">{{feed.body | truncate(100, true, '...') }}</h2>
+                    <div class="text-muted infScroll-date">{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
+                </div>
+            </div>
+            <div class="col-3 pt-4">
+                <img src="https://picsum.photos/205/115" class="img-fluid float-end" alt="">
+            </div>
+        </div>
+    </div>
+</a>
+{% endfor %}
+
+
+{% if has_next %}
+<div class="text-center htmx-settling"
+     hx-trigger="revealed"
+     hx-get="{{ url_for('main.feed_search', page=page +1, search_text=request.args.search_text )}}"
+     hx-swap="outerHTML"
+>
+    <img src="/static/image/htmx/bars.svg" width="120px"
+     class="htmx-indicator"
+    />
+</div>
+{% else %}
+<div class="text-center">
+    <h5> 더이상 데이터가 없습니다. </h5>
+</div>
+{% endif %}

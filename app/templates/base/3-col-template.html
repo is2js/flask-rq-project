@@ -2,7 +2,7 @@
 
 {% block template %}
 <style>
-    @media only screen and (min-width: 992px){
+    @media only screen and (min-width: 992px) {
         .col-navbar {
             /*크기 가로 80px 고정*/
             display: flex;
@@ -20,7 +20,14 @@
     <div class="row">
         <div class="col-navbar">{% block content_left %}{% endblock content_left %}</div>
         <div class="col-12 col-lg-8 pt-5 px-4 px-md-5">{% block content_mid %}{% endblock content_mid %}</div>
-        <div class="d-none d-lg-block col-lg-3 pt-5">{% block content_right %}{% endblock content_right %}</div>
+        <div class="d-none d-lg-block col-lg-3 pt-5">
+            <form class="d-flex col-12  pb-5" role="search" action="{{url_for('main.feed_search') }}">
+                <input class="form-control rounded-pill" type="search" placeholder="Search" aria-label="Search"
+                       name="search_text"
+                >
+            </form>
+            {% block content_right %}{% endblock content_right %}
+        </div>
     </div>
 </div>
 {% endblock template %}

@@ -7,11 +7,14 @@ from datetime import datetime, timedelta
 
 import markdown2 as markdown2
 from flask import request, render_template, flash, session, redirect, url_for, jsonify, Blueprint, current_app as app
-from sqlalchemy import asc
+from sqlalchemy import asc, or_
+from sqlalchemy.orm import joinedload
+
 from app.extentions import queue
+from app.models.pagination import paginate
 from app.rss_sources import get_current_services, URLService, YoutubeService, BlogService
 from app.tasks import count_words, create_image_set, send_async_mail
-from app.models import Task, Message, Notification, SourceCategory, Feed
+from app.models import Task, Message, Notification, SourceCategory, Feed, Source
 from app.tasks.service import TaskService
 from app.utils import logger
 
@@ -25,16 +28,7 @@ def is_htmx_request():
 # route 작성
 @main_bp.route('/')
 def index():
-    # feeds = []
-    # for service in get_current_services():
-    #     feeds += service.get_feeds()
-    #
-    # # 통합feeds를 published 정순으로 정렬
-    # feeds.sort(key=lambda feed: feed.published)
-    # if is_htmx_request:
-    #     feeds = URLService().get_feeds(page=2)
-    # return f"'HX-Request' in request.headers: {'HX-Request' in request.headers}"
-    # return render_template('main/components/feed-list-elements.html', feeds=feeds)
+
 
     page = request.args.get('page', 1, type=int)
 
@@ -72,12 +66,11 @@ def index():
 
 @main_bp.route('/feed/<slug>')
 def feed_single(slug):
-
     feed = Feed.get_by_slug(slug)
 
     categories = SourceCategory.get_source_config_active_list()
 
-    category_name = feed.source.source_category.name.lower() # 비교를 위하 소문자로
+    category_name = feed.source.source_category.name.lower()  # 비교를 위하 소문자로
     if category_name == 'youtube':
         service = YoutubeService()
     elif category_name == 'blog':
@@ -87,7 +80,7 @@ def feed_single(slug):
     else:
         raise ValueError(f'Invalid category name : {category_name}')
 
-    related_feeds = service.get_feeds()[:5] # 기본 10개 가져오는데 5개만
+    related_feeds = service.get_feeds()[:5]  # 기본 10개 가져오는데 5개만
 
     return render_template('main/single.html',
                            feed=feed,
@@ -125,7 +118,6 @@ def feeds_by_category(name):
 
     # content_right - category-cloud + footer
     categories = SourceCategory.get_source_config_active_list()
-    categories = categories
 
     return render_template('main/category.html',
                            feeds=pagination.items,
@@ -133,6 +125,48 @@ def feeds_by_category(name):
                            has_next=pagination.has_next,
                            categories=categories,
                            category_name=name,
+                           )
+
+
+@main_bp.route('/feed/search')
+def feed_search():
+    search_text = request.args.get('search_text', '')
+    # pagination 1
+    page = request.args.get('page', 1, type=int)
+
+    query = Feed.query \
+        .join(Source.feeds) \
+        .join(Source.source_category) \
+        .options(joinedload(Feed.source).joinedload(Source.source_category)) \
+        .filter(SourceCategory.source_config_filter()) \
+        .where(or_(
+            Feed.title.icontains(f'%{search_text}%'),
+            Feed.body.icontains(f'%{search_text}%'),
+        )) \
+        .order_by(Feed.created_at.desc())
+
+    # pagination 2
+    # feeds = query.all()
+    pagination = paginate(query, page=page, per_page=10)
+
+    # pagination 4
+    if is_htmx_request():
+        return render_template('main/components/feed-list-elements-search.html',
+                               feeds=pagination.items,
+                               has_next=pagination.has_next,
+                               page=page,
+                               )
+
+    categories = SourceCategory.get_source_config_active_list()
+
+    # pagination 3
+    # return render_template('main/search.html',
+    #                        feeds=feeds)
+    return render_template('main/search.html',
+                           feeds=pagination.items,
+                           has_next=pagination.has_next,
+                           page=page,
+                           categories=categories
                            )
 
 
