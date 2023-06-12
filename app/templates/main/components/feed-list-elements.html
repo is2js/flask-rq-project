@@ -48,7 +48,11 @@
 {% else %}
 <!--<div class="text-center htmx-settling">-->
 <!--<div class="text-center htmx-settling">-->
-<div class="text-center">
-    <h5> 더이상 데이터가 없습니다. </h5>
-</div>
+    <div class="text-center">
+    {% if page == 1 %}
+        <h5> 데이터가 존재하지 않습니다. </h5>
+    {% elif page > 1 %}
+        <h5> 더이상 데이터가 없습니다. </h5>
+    {% endif %}
+    </div>
 {% endif %}

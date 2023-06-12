@@ -14,9 +14,26 @@
         {% endif %}
     </h1>
 
-    {% include "main/components/feed-list-elements-search.html" %}
+    <div class id="search-results">
+        {% include "main/components/feed-list-elements-search.html" %}
+    </div>
 </div>
 {% endblock content_mid %}
+
+{% block search_form %}
+<!--<form class="d-flex col-12  pb-5" role="search" action="{{url_for('main.feed_search') }}">-->
+<form class="d-flex col-12  pb-5" role="search">
+    <input class="form-control rounded-pill" type="search" placeholder="Live Search" aria-label="search"
+           name="search_text"
+           value="{{ request.args.search_text or '' }}"
+           hx-get="{{ url_for('main.feed_search')}}"
+           hx-trigger="keyup changed delay:250ms"
+           hx-push-url="true"
+           hx-target="#search-results"
+           hx-swap="innerHTML"
+    >
+</form>
+{% endblock search_form %}
 
 {% block content_right %}
 {% include "main/components/category-cloud.html" %}
