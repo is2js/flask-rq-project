@@ -28,17 +28,18 @@ def is_htmx_request():
 # route 작성
 @main_bp.route('/')
 def index():
-
-
     page = request.args.get('page', 1, type=int)
 
+    query = Feed.query \
+        .join(Source.feeds) \
+        .join(Source.source_category) \
+        .options(joinedload(Feed.source).joinedload(Source.source_category)) \
+        .filter(SourceCategory.source_config_filter()) \
+        .order_by(Feed.created_at.desc())
+
+    pagination = paginate(query, page=page, per_page=10)
+
     if is_htmx_request():
-        # feeds = URLService().get_feeds(page=2)
-        # return render_template('main/components/feed-list-elements.html', feeds=feeds)
-        # feeds = URLService().get_feeds(page=page)
-        # time.sleep(0.5)
-        # return render_template('main/components/feed-list-elements.html', feeds=feeds, page=page)
-        pagination = URLService().get_feeds(page=page)
         time.sleep(0.2)
         return render_template('main/components/feed-list-elements.html',
                                feeds=pagination.items,
@@ -46,21 +47,12 @@ def index():
                                has_next=pagination.has_next
                                )
 
-    # feeds = URLService().get_feeds(page=1)
-    # return render_template('main/index.html', feeds=feeds)
-    # feeds = URLService().get_feeds(page=page)
-    # return render_template('main/index.html', feeds=feeds, page=page)
-
-    pagination = URLService().get_feeds(page=page)
-
-    categories = SourceCategory.get_source_config_active_list()
-    # [<app.models.sources.SourceCategory object at 0x7f5de54aa580>, <app.models.sources.SourceCategory object at 0x7f5de54aa5e0>, <app.models.sources.SourceCategory object at 0x7f5de54aa190>]
+    # categories = SourceCategory.get_source_config_active_list()
 
     return render_template('main/index.html',
                            feeds=pagination.items,
                            page=pagination.page,
                            has_next=pagination.has_next,
-                           categories=categories
                            )
 
 
@@ -68,7 +60,7 @@ def index():
 def feed_single(slug):
     feed = Feed.get_by_slug(slug)
 
-    categories = SourceCategory.get_source_config_active_list()
+    # categories = SourceCategory.get_source_config_active_list()
 
     category_name = feed.source.source_category.name.lower()  # 비교를 위하 소문자로
     if category_name == 'youtube':
@@ -84,7 +76,6 @@ def feed_single(slug):
 
     return render_template('main/single.html',
                            feed=feed,
-                           categories=categories,
                            related_feeds=related_feeds,
                            )
 
@@ -117,13 +108,12 @@ def feeds_by_category(name):
     pagination = service.get_feeds(page=page)
 
     # content_right - category-cloud + footer
-    categories = SourceCategory.get_source_config_active_list()
+    # categories = SourceCategory.get_source_config_active_list()
 
     return render_template('main/category.html',
                            feeds=pagination.items,
                            page=pagination.page,
                            has_next=pagination.has_next,
-                           categories=categories,
                            category_name=name,
                            )
 
@@ -140,9 +130,9 @@ def feed_search():
         .options(joinedload(Feed.source).joinedload(Source.source_category)) \
         .filter(SourceCategory.source_config_filter()) \
         .where(or_(
-            Feed.title.icontains(f'%{search_text}%'),
-            Feed.body.icontains(f'%{search_text}%'),
-        )) \
+        Feed.title.icontains(f'%{search_text}%'),
+        Feed.body.icontains(f'%{search_text}%'),
+    )) \
         .order_by(Feed.created_at.desc())
 
     # pagination 2
@@ -157,7 +147,7 @@ def feed_search():
                                page=page,
                                )
 
-    categories = SourceCategory.get_source_config_active_list()
+    # categories = SourceCategory.get_source_config_active_list()
 
     # pagination 3
     # return render_template('main/search.html',
@@ -166,7 +156,6 @@ def feed_search():
                            feeds=pagination.items,
                            has_next=pagination.has_next,
                            page=page,
-                           categories=categories
                            )
 
 

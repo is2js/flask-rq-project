@@ -44,7 +44,7 @@
     {% for feed in related_feeds %}
     <a href="{{feed.absolute_url}}" class="text-decoration-none">
         <div class="card border-0 mb-3 ps-1">
-            <div class="row">
+            <div class="row d-flex align-items-center">
                 <div class="col-9 pe-2">
                     <div class="card-body p-0">
                         <span class="small text-dark">{{feed.source.source_category.name}}</span>
@@ -52,7 +52,10 @@
                     </div>
                 </div>
                 <div class="col-3">
-                    <img src="https://picsum.photos/205/115" alt="" class="img-fluid float-end">
+                    <img src="{{feed.thumbnail_url or 'https://picsum.photos/205/115' }}" class="img-fluid float-end"
+                         style="width: 205px;max-height:115px;object-fit: cover"
+                         alt="{{feed.title}}"
+                    >
                 </div>
             </div>
         </div>

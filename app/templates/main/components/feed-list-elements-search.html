@@ -1,7 +1,7 @@
 {% for feed in feeds %}
 <a href="{{feed.absolute_url}}" class="text-decoration-none">
     <div class="card border-0 mb-5 mb-md-3">
-        <div class="row">
+        <div class="row d-flex align-items-center">
             <div class="col-9">
                 <div class="card-body p-0">
                     <div class="pb-2 text-body infScroll-category">{{feed.source.name}}</div>
@@ -10,8 +10,11 @@
                     <div class="text-muted infScroll-date">{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
                 </div>
             </div>
-            <div class="col-3 pt-4">
-                <img src="https://picsum.photos/205/115" class="img-fluid float-end" alt="">
+            <div class="col-3">
+                <img src="{{feed.thumbnail_url or 'https://picsum.photos/205/115' }}" class="img-fluid float-end"
+                     style="width: 205px;max-height:115px;object-fit: cover"
+                     alt="{{feed.title}}"
+                >
             </div>
         </div>
     </div>
@@ -26,15 +29,15 @@
      hx-swap="outerHTML"
 >
     <img src="/static/image/htmx/bars.svg" width="120px"
-     class="htmx-indicator"
+         class="htmx-indicator"
     />
 </div>
 {% else %}
-    <div class="text-center">
+<div class="text-center">
     {% if page == 1 %}
-        <h5> 데이터가 존재하지 않습니다. </h5>
+    <h5> 데이터가 존재하지 않습니다. </h5>
     {% elif page > 1 %}
-        <h5> 더이상 데이터가 없습니다. </h5>
+    <h5> 더이상 데이터가 없습니다. </h5>
     {% endif %}
-    </div>
+</div>
 {% endif %}

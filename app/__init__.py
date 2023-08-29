@@ -108,6 +108,7 @@ def create_app():
 
     # cors.init_app(app)
 
+    # flask shell 용
     @app.shell_context_processor
     def make_shell_context():
         from .tasks import send_async_mail
@@ -129,7 +130,20 @@ def create_app():
     def shutdown_session(exception=None):
         session.remove()
 
+    # custom filters
     app.jinja_env.filters["remain_from_now"] = remain_from_now
     app.jinja_env.filters["markdown"] = markdown
 
+    # 상시 떠있는 데이터 추가
+    app.context_processor(inject_categories)
+
     return app
+
+
+def inject_categories():
+    from .models import SourceCategory
+    categories = SourceCategory.get_source_config_active_list()
+
+    return dict(
+        categories=categories,
+    )

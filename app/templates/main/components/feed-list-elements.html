@@ -8,7 +8,7 @@
 <!--       {% endif %}-->
 <a href="{{feed.absolute_url}}" class="text-decoration-none">
     <div class="card border-0 mb-5 mb-md-3">
-        <div class="row">
+        <div class="row d-flex align-items-center">
             <div class="col-8">
                 <div class="card-body p-0">
                     <div class="pb-2 text-body infScroll-category">{{feed.source.name}}</div>
@@ -17,9 +17,12 @@
                     <div class="text-muted infScroll-date">{{feed.kst_published.strftime("%b %d %Y , %H:%M") }}</div>
                 </div>
             </div>
-            <div class="col-4 pt-3">
-                <img src="https://picsum.photos/205/115" class="img-fluid float-end" alt="">
-                <!--               <img src="{{feed.thumbnail_url}}" class="img-fluid float-end" alt="">-->
+            <div class="col-4 ">
+<!--                <img src="https://picsum.photos/205/115" class="img-fluid float-end" alt="">-->
+                <img src="{{feed.thumbnail_url or 'https://picsum.photos/205/115' }}" class="img-fluid float-end"
+                     style="width: 205px;max-height:115px;object-fit: cover"
+                     alt="{{feed.title}}"
+                >
             </div>
         </div>
     </div>
